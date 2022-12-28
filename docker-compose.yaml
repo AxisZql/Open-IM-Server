@@ -97,7 +97,7 @@ services:
       ETCDCTL_API: 3
     restart: always
     command: /usr/local/bin/etcd --name etcd0 --data-dir /etcd-data --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379 --listen-peer-urls http://0.0.0.0:2380 --initial-advertise-peer-urls http://0.0.0.0:2380 --initial-cluster etcd0=http://0.0.0.0:2380 --initial-cluster-token tkn --initial-cluster-state new
-
+# MinIO是Golang编写的开源对象存储服务
   minio:
     image: minio/minio
     ports:
@@ -187,7 +187,10 @@ services:
     depends_on:
     - prometheus
     network_mode: "host" 
-
+# Node Export是Prometheus官方提供的一个节点资源采集组件，可以用于收集服务器节点的数据
+# 如CPU频率信息、磁盘IO统计、剩余可用内存等。Node Export会将收集到信息转换为Prometheus
+# 可以识别的Metrics数据。Prometheus可以从Node Exporter中对这些指标进行收集与储存，并且
+# 可以根据这些数据的实时变化进行服务器节点资源监控
   node-exporter:
     image: quay.io/prometheus/node-exporter
     container_name: node-exporter
