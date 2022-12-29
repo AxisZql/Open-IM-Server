@@ -27,6 +27,10 @@ import (
 	"gorm.io/gorm"
 )
 
+/**
+* CMS(Content Management System)内容管理系统
+ */
+
 type adminCMSServer struct {
 	rpcPort         int
 	rpcRegisterName string
@@ -189,6 +193,7 @@ func (s *adminCMSServer) GetUserRegisterAddFriendIDList(_ context.Context, req *
 		CurrentPage: req.Pagination.PageNumber,
 		ShowNumber:  req.Pagination.ShowNumber,
 	}
+	// axis 使用反射将userList的数据映射到UserInfoList中
 	utils.CopyStructFields(&resp.UserInfoList, userList)
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "resp: ", req.String())
 	return resp, nil
@@ -361,8 +366,10 @@ func GetRangeDate(from, to time.Time) [][2]time.Time {
 	// days
 	case isInOneMonth(from, to):
 		for i := 0; ; i++ {
+			// [from,from+24],[from+24,from+24+24]....
 			fromTime := from.Add(time.Hour * 24 * time.Duration(i))
 			toTime := from.Add(time.Hour * 24 * time.Duration(i+1))
+			// 如果toTime的时间晚与to+24h则break
 			if toTime.After(to.Add(time.Hour * 24)) {
 				break
 			}
@@ -372,6 +379,7 @@ func GetRangeDate(from, to time.Time) [][2]time.Time {
 		}
 	// month
 	case !isInOneMonth(from, to):
+		// 如果两个时间点的间隔天数小于30天
 		if to.Sub(from) < time.Hour*24*30 {
 			for i := 0; ; i++ {
 				fromTime := from.Add(time.Hour * 24 * time.Duration(i))
@@ -412,6 +420,7 @@ func GetRangeDate(from, to time.Time) [][2]time.Time {
 	return times
 }
 
+// 获取当前月的下n个月的第一天
 func getFirstDateOfNextNMonth(currentTime time.Time, n int) time.Time {
 	lastOfMonth := time.Date(currentTime.Year(), currentTime.Month(), 1, 0, 0, 0, 0, currentTime.Location()).AddDate(0, n, 0)
 	return lastOfMonth
@@ -447,8 +456,10 @@ func (s *adminCMSServer) GetGroupStatistics(_ context.Context, req *pbAdminCMS.G
 	times := GetRangeDate(fromTime, toTime)
 	log.NewDebug(req.OperationID, "times:", times)
 	wg := &sync.WaitGroup{}
-	resp.IncreaseGroupNumList = make([]*pbAdminCMS.DateNumList, len(times), len(times))
-	resp.TotalGroupNumList = make([]*pbAdminCMS.DateNumList, len(times), len(times))
+	// 获取日期期间内的群里数目变化
+	resp.IncreaseGroupNumList = make([]*pbAdminCMS.DateNumList, len(times), len(times)) // 期间增势变化
+	resp.TotalGroupNumList = make([]*pbAdminCMS.DateNumList, len(times), len(times))    // 期间总数变化
+	// 使用协程并发获取不同时间区间的群聊数变化、群聊总数变化
 	wg.Add(len(times))
 	for i, v := range times {
 		go func(wg *sync.WaitGroup, index int, v [2]time.Time) {
@@ -705,3 +716,5 @@ func (s *adminCMSServer) GetClientInitConfig(_ context.Context, req *pbAdminCMS.
 func (s *adminCMSServer) SetClientInitConfig(_ context.Context, req *pbAdminCMS.SetClientInitConfigReq) (*pbAdminCMS.SetClientInitConfigResp, error) {
 	return nil, nil
 }
+
+// axis 2022-12-29 read done!

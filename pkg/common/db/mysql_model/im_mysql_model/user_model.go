@@ -39,6 +39,7 @@ func UserRegister(user db.User) error {
 	if user.AppMangerLevel == 0 {
 		user.AppMangerLevel = constant.AppOrdinaryUsers
 	}
+	// TODO: why
 	if user.Birth.Unix() < 0 {
 		user.Birth = utils.UnixSecondToTime(0)
 	}
