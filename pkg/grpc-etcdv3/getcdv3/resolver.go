@@ -6,6 +6,7 @@ import (
 	"Open_IM/pkg/utils"
 	"context"
 	"fmt"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
@@ -55,6 +56,7 @@ func NewResolver(schema, etcdAddr, serviceName string, operationID string) (*Res
 	//
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	conn, err := grpc.DialContext(ctx, GetPrefix(schema, serviceName),
+		// axis LoadBalancing策略采用轮询调度算法round robin
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"LoadBalancingPolicy": "%s"}`, roundrobin.Name)),
 		grpc.WithInsecure())
 	log.Debug(operationID, "etcd key ", GetPrefix(schema, serviceName))
@@ -187,7 +189,7 @@ func GetDefaultConn(schema, etcdaddr, serviceName string, operationID string) *g
 
 func (r *Resolver) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
 	if r.cli == nil {
-		return nil, fmt.Errorf("etcd clientv3 client failed, etcd:%s", target)
+		return nil, fmt.Errorf("etcd clientv3 client failed, etcd:%v", target)
 	}
 	r.cc = cc
 	log.Debug("", "Build..")
@@ -282,6 +284,7 @@ func GetDefaultGatewayConn4Unique(schema, etcdaddr, operationID string) []*grpc.
 		go func() {
 			for {
 				select {
+					// axis 30s后重新获取是什么意思？
 				case <-time.After(time.Second * time.Duration(30)):
 					Conn4UniqueListMtx.Lock()
 					Conn4UniqueList = getConn4Unique(schema, etcdaddr, config.Config.RpcRegisterName.OpenImRelayName)
@@ -306,6 +309,7 @@ func GetDefaultGatewayConn4Unique(schema, etcdaddr, operationID string) []*grpc.
 		return grpcConns
 	}
 	log.NewWarn(operationID, utils.GetSelfFuncName(), " len(grpcConns) == 0 ", schema, etcdaddr, config.Config.RpcRegisterName.OpenImRelayName)
+	//axis 如果从etcd中获取失败，则直接从配置文件中读取对应的服务实例
 	grpcConns = GetDefaultGatewayConn4UniqueFromcfg(operationID)
 	log.NewDebug(operationID, utils.GetSelfFuncName(), config.Config.RpcRegisterName.OpenImRelayName, grpcConns)
 	return grpcConns
@@ -338,6 +342,7 @@ func GetDefaultGatewayConn4UniqueFromcfg(operationID string) []*grpc.ClientConn 
 
 }
 
+// getConn4Unique 获取etcd中key前缀为"schema:///servicename"的所有服务的连接实例 axis
 func getConn4Unique(schema, etcdaddr, servicename string) []*grpc.ClientConn {
 	gEtcdCli, err := clientv3.New(clientv3.Config{Endpoints: strings.Split(etcdaddr, ",")})
 	if err != nil {
@@ -351,7 +356,7 @@ func getConn4Unique(schema, etcdaddr, servicename string) []*grpc.ClientConn {
 
 	resp, err := gEtcdCli.Get(ctx, prefix, clientv3.WithPrefix())
 	//  "%s:///%s:ip:port"   -> %s:ip:port
-	allService := make([]string, 0)
+	allService := make([]string, 0) // axis 根据key前缀获取对应注册服务的地址信息
 	if err == nil {
 		for i := range resp.Kvs {
 			k := string(resp.Kvs[i].Key)

@@ -80,6 +80,7 @@ func (s *cacheServer) Run() {
 		log.NewError("0", "RegisterEtcd failed ", err.Error())
 		panic(utils.Wrap(err, "register cache module  rpc to etcd err"))
 	}
+	// axis 启动前删除redis中部分的key
 	go rocksCache.DelKeys()
 	err = srv.Serve(listener)
 	if err != nil {

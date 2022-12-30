@@ -6,12 +6,13 @@ import (
 	"Open_IM/pkg/utils"
 	"context"
 	"fmt"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"gopkg.in/yaml.v3"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"gopkg.in/yaml.v3"
 )
 
 type RegEtcd struct {
@@ -43,7 +44,7 @@ func GetTarget(schema, myHost string, myPort int, serviceName string) string {
 	return GetPrefix4Unique(schema, serviceName) + ":" + net.JoinHostPort(myHost, strconv.Itoa(myPort)) + "/"
 }
 
-//etcdAddr separated by commas
+// etcdAddr separated by commas
 func RegisterEtcd(schema, etcdAddr, myHost string, myPort int, serviceName string, ttl int) error {
 	operationID := utils.OperationIDGenerator()
 	args := schema + " " + etcdAddr + " " + myHost + " " + serviceName + " " + utils.Int32ToString(int32(myPort))

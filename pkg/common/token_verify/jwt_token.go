@@ -191,6 +191,7 @@ func ParseToken(tokensString, operationID string) (claims *Claims, err error) {
 		log.NewError(operationID, "get token from redis err, not in redis ", "m is nil", tokensString)
 		return nil, utils.Wrap(constant.ErrTokenInvalid, "get token from redis err")
 	}
+	// axis token的状态类别会因为多端登录互踢而发生状态改变
 	if v, ok := m[tokensString]; ok {
 		switch v {
 		case constant.NormalToken:
@@ -227,7 +228,7 @@ func ParseRedisInterfaceToken(redisToken interface{}) (*Claims, error) {
 	return GetClaimFromToken(string(redisToken.([]uint8)))
 }
 
-//Validation token, false means failure, true means successful verification
+// Validation token, false means failure, true means successful verification
 func VerifyToken(token, uid string) (bool, error) {
 	claims, err := ParseToken(token, "")
 	if err != nil {

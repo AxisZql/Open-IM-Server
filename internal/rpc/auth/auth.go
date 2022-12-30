@@ -77,6 +77,7 @@ func (rpc *rpcAuth) ParseToken(_ context.Context, req *pbAuth.ParseTokenReq) (*p
 
 func (rpc *rpcAuth) ForceLogout(_ context.Context, req *pbAuth.ForceLogoutReq) (*pbAuth.ForceLogoutResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc args ", req.String())
+	// 只有管理员才能让他人下线
 	if !token_verify.IsManagerUserID(req.OpUserID) {
 		errMsg := req.OperationID + " IsManagerUserID false " + req.OpUserID
 		log.NewError(req.OperationID, errMsg)
@@ -96,10 +97,14 @@ func (rpc *rpcAuth) ForceLogout(_ context.Context, req *pbAuth.ForceLogoutReq) (
 	return &pbAuth.ForceLogoutResp{CommonResp: &pbAuth.CommonResp{}}, nil
 }
 
+// todo forceKickOff 方法是不是不加入rpcAuth更佳？
 func (rpc *rpcAuth) forceKickOff(userID string, platformID int32, operationID string) error {
 	log.NewInfo(operationID, utils.GetSelfFuncName(), " args ", userID, platformID)
+	// axis 从注册中心中获取relay rpc服务
 	grpcCons := getcdv3.GetDefaultGatewayConn4Unique(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), operationID)
+	// TODO: axis 多个relay rpc服务执行同一个动作，是否多余 
 	for _, v := range grpcCons {
+		// axis 调用relay rpc服务将对应用户踢下线
 		client := pbRelay.NewRelayClient(v)
 		kickReq := &pbRelay.KickUserOfflineReq{OperationID: operationID, KickUserIDList: []string{userID}, PlatformID: platformID}
 		log.NewInfo(operationID, "KickUserOffline ", client, kickReq.String())
