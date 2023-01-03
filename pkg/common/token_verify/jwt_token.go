@@ -140,9 +140,11 @@ func IsManagerUserID(OpUserID string) bool {
 }
 
 func CheckAccess(OpUserID string, OwnerUserID string) bool {
+	// axis 如果是管理员id则直接允许
 	if utils.IsContain(OpUserID, config.Config.Manager.AppManagerUid) {
 		return true
 	}
+	// axis 普通用户只能操作本身的权限范围
 	if OpUserID == OwnerUserID {
 		return true
 	}

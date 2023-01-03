@@ -80,6 +80,7 @@ func GetFriendIDListFromCache(userID string) ([]string, error) {
 		}
 		return string(bytes), nil
 	}
+	// axis 使用dtm的rockCache实现数据库和缓存的强一致性
 	friendIDListStr, err := db.DB.Rc.Fetch(friendRelationCache+userID, time.Second*30*60, getFriendIDList)
 	if err != nil {
 		return nil, utils.Wrap(err, "")

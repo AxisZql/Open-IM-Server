@@ -9,9 +9,12 @@ message CommonResp{
 }
 
 message CommID{
+  // 操作者id
   string OpUserID = 1;
   string OperationID = 2;
+  // 操作目标id
   string ToUserID = 4;
+  // 操作目标所有者id
   string FromUserID = 5;
 }
 

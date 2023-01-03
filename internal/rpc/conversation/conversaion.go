@@ -86,6 +86,7 @@ func (rpc *rpcConversation) ModifyConversationField(c context.Context, req *pbCo
 		resp.CommonResp = &pbConversation.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}
 		return resp, nil
 	}
+	// axis 获取两份userID slice中不同的部分
 	for _, v := range utils.DifferenceString(haveUserID, req.UserIDList) {
 		conversation.OwnerUserID = v
 		err = rocksCache.DelUserConversationIDListFromCache(v)

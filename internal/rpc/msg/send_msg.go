@@ -738,6 +738,7 @@ func Notification(n *NotificationMsg) {
 	msg.ContentType = n.ContentType
 	msg.SessionType = n.SessionType
 	msg.CreateTime = utils.GetCurrentTimestampByMill()
+	// axis 通过当前时间戳和发送者id+随机数生成md5串
 	msg.ClientMsgID = utils.GetMsgID(n.SendID)
 	msg.Options = make(map[string]bool, 7)
 	msg.SenderNickname = n.SenderNickname
@@ -747,6 +748,7 @@ func Notification(n *NotificationMsg) {
 		msg.RecvID = ""
 		msg.GroupID = n.RecvID
 	}
+	// axis IOS系统推送声音以及标记计数
 	offlineInfo.IOSBadgeCount = config.Config.IOSPush.BadgeCount
 	offlineInfo.IOSPushSound = config.Config.IOSPush.PushSound
 	switch msg.ContentType {
@@ -762,6 +764,7 @@ func Notification(n *NotificationMsg) {
 		title = config.Config.Notification.GroupInfoSet.OfflinePush.Title
 		desc = config.Config.Notification.GroupInfoSet.OfflinePush.Desc
 		ex = config.Config.Notification.GroupInfoSet.OfflinePush.Ext
+		// axis reliability 可靠水平
 		reliabilityLevel = config.Config.Notification.GroupInfoSet.Conversation.ReliabilityLevel
 		unReadCount = config.Config.Notification.GroupInfoSet.Conversation.UnreadCount
 	case constant.JoinGroupApplicationNotification:

@@ -50,8 +50,10 @@ func ConversationSetPrivateNotification(operationID, sendID, recvID string, isPr
 	var tips open_im_sdk.TipsComm
 	var tipsMsg string
 	if isPrivateChat == true {
+		// axis 阅读后即销毁功能开启
 		tipsMsg = config.Config.Notification.ConversationSetPrivate.DefaultTips.OpenTips
 	} else {
+		// axis 阅读后即销毁功能关闭
 		tipsMsg = config.Config.Notification.ConversationSetPrivate.DefaultTips.CloseTips
 	}
 	tips.DefaultTips = tipsMsg
