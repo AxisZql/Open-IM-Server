@@ -121,6 +121,7 @@ func (s *friendServer) AddBlacklist(ctx context.Context, req *pbFriend.AddBlackl
 		return &pbFriend.AddBlacklistResp{CommonResp: &pbFriend.CommonResp{ErrCode: constant.ErrInternal.ErrCode, ErrMsg: errMsg}}, nil
 	}
 	cacheClient := pbCache.NewCacheClient(etcdConn)
+	// 调用cache rpc 服务删除原来的黑名单缓存 axis
 	cacheResp, err := cacheClient.DelBlackIDListFromCache(context.Background(), &pbCache.DelBlackIDListFromCacheReq{UserID: req.CommID.FromUserID, OperationID: req.CommID.OperationID})
 	if err != nil {
 		log.NewError(req.CommID.OperationID, "DelBlackIDListFromCache rpc call failed ", err.Error())
@@ -131,7 +132,7 @@ func (s *friendServer) AddBlacklist(ctx context.Context, req *pbFriend.AddBlackl
 		return &pbFriend.AddBlacklistResp{CommonResp: &pbFriend.CommonResp{ErrCode: cacheResp.CommonResp.ErrCode, ErrMsg: cacheResp.CommonResp.ErrMsg}}, nil
 	}
 
-	chat.BlackAddedNotification(req)
+	chat.BlackAddedNotification(req) // axis 发送通知消息
 	return &pbFriend.AddBlacklistResp{CommonResp: &pbFriend.CommonResp{}}, nil
 }
 
@@ -158,11 +159,13 @@ func (s *friendServer) AddFriend(ctx context.Context, req *pbFriend.AddFriendReq
 		}}, nil
 	}
 	var isSend = true
+	// axis 获取要加用户的好友id列表
 	userIDList, err := rocksCache.GetFriendIDListFromCache(req.CommID.ToUserID)
 	if err != nil {
 		log.NewError(req.CommID.OperationID, "GetFriendIDListFromCache failed ", err.Error(), req.CommID.ToUserID)
 		return &pbFriend.AddFriendResp{CommonResp: &pbFriend.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: err.Error()}}, nil
 	}
+	// axis 获取加好友发起方的用户的好友id列表
 	userIDList2, err := rocksCache.GetFriendIDListFromCache(req.CommID.FromUserID)
 	if err != nil {
 		log.NewError(req.CommID.OperationID, "GetUserByUserID failed ", err.Error(), req.CommID.FromUserID)
@@ -173,7 +176,7 @@ func (s *friendServer) AddFriend(ctx context.Context, req *pbFriend.AddFriendReq
 		if v == req.CommID.FromUserID {
 			for _, v2 := range userIDList2 {
 				if v2 == req.CommID.ToUserID {
-					isSend = false
+					isSend = false // axis 如果对方已经是好友，则不发送好友添加消息
 					break
 				}
 			}
@@ -213,7 +216,7 @@ func (s *friendServer) ImportFriend(ctx context.Context, req *pbFriend.ImportFri
 	log.NewInfo(req.OperationID, "ImportFriend args ", req.String())
 	resp := pbFriend.ImportFriendResp{CommonResp: &pbFriend.CommonResp{}}
 	var c pbFriend.CommonResp
-
+	// axis 管理员账户才有资格导入好友数据
 	if !utils.IsContain(req.OpUserID, config.Config.Manager.AppManagerUid) {
 		log.NewError(req.OperationID, "not authorized", req.OpUserID, config.Config.Manager.AppManagerUid)
 		c.ErrCode = constant.ErrAccess.ErrCode
@@ -242,8 +245,10 @@ func (s *friendServer) ImportFriend(ctx context.Context, req *pbFriend.ImportFri
 			resp.UserIDResultList = append(resp.UserIDResultList, &pbFriend.UserIDResult{UserID: v, Result: -1})
 		} else {
 			if _, err := imdb.GetFriendRelationshipFromFriend(req.FromUserID, v); err != nil {
+				// axis TODO: this case maybe the db get mistake
 				//Establish two single friendship
 				toInsertFollow := db.Friend{OwnerUserID: req.FromUserID, FriendUserID: v}
+				// axis TODO: 这里分两部分执行，可能第一步成功，第二步成功，这是不可取的？是否用事务保证一致性更为妥当
 				err1 := imdb.InsertToFriend(&toInsertFollow)
 				if err1 != nil {
 					log.NewError(req.OperationID, "InsertToFriend failed ", err1.Error(), toInsertFollow)
@@ -276,6 +281,7 @@ func (s *friendServer) ImportFriend(ctx context.Context, req *pbFriend.ImportFri
 		return &resp, nil
 	}
 	cacheClient := pbCache.NewCacheClient(etcdConn)
+	// axis 这个的OperationID可能是用于故障排除，根据API返回的异常OperationID可以快速在大量运行日志中地位到对应日志
 	cacheResp, err := cacheClient.DelFriendIDListFromCache(context.Background(), &pbCache.DelFriendIDListFromCacheReq{UserID: req.FromUserID, OperationID: req.OperationID})
 	if err != nil {
 		log.NewError(req.OperationID, "DelBlackIDListFromCache rpc call failed ", err.Error())
@@ -316,7 +322,7 @@ func (s *friendServer) ImportFriend(ctx context.Context, req *pbFriend.ImportFri
 	return &resp, nil
 }
 
-//process Friend application
+// process Friend application [axis] 被加方的同意或者拒绝的处理逻辑
 func (s *friendServer) AddFriendResponse(ctx context.Context, req *pbFriend.AddFriendResponseReq) (*pbFriend.AddFriendResponseResp, error) {
 	log.NewInfo(req.CommID.OperationID, "AddFriendResponse args ", req.String())
 	if !token_verify.CheckAccess(req.CommID.OpUserID, req.CommID.FromUserID) {
@@ -431,6 +437,7 @@ func (s *friendServer) DeleteFriend(ctx context.Context, req *pbFriend.DeleteFri
 		log.NewError(req.CommID.OperationID, "CheckAccess false ", req.CommID.OpUserID, req.CommID.FromUserID)
 		return &pbFriend.DeleteFriendResp{CommonResp: &pbFriend.CommonResp{ErrCode: constant.ErrAccess.ErrCode, ErrMsg: constant.ErrAccess.ErrMsg}}, nil
 	}
+	// axis 单方面删除
 	err := imdb.DeleteSingleFriendInfo(req.CommID.FromUserID, req.CommID.ToUserID)
 	if err != nil {
 		log.NewError(req.CommID.OperationID, "DeleteSingleFriendInfo failed", err.Error(), req.CommID.FromUserID, req.CommID.ToUserID)
@@ -457,6 +464,7 @@ func (s *friendServer) DeleteFriend(ctx context.Context, req *pbFriend.DeleteFri
 	if err := rocksCache.DelAllFriendsInfoFromCache(req.CommID.FromUserID); err != nil {
 		log.NewError(req.CommID.OperationID, utils.GetSelfFuncName(), err.Error(), req.CommID.FromUserID)
 	}
+	// axis 清除被删除方的好友信息缓存
 	if err := rocksCache.DelAllFriendsInfoFromCache(req.CommID.ToUserID); err != nil {
 		log.NewError(req.CommID.OperationID, utils.GetSelfFuncName(), err.Error(), req.CommID.FromUserID)
 	}
@@ -495,6 +503,7 @@ func (s *friendServer) GetBlacklist(ctx context.Context, req *pbFriend.GetBlackl
 	return &pbFriend.GetBlacklistResp{BlackUserInfoList: userInfoList}, nil
 }
 
+// SetFriendRemark 设置好友备注 axis
 func (s *friendServer) SetFriendRemark(ctx context.Context, req *pbFriend.SetFriendRemarkReq) (*pbFriend.SetFriendRemarkResp, error) {
 	log.NewInfo(req.CommID.OperationID, "SetFriendComment args ", req.String())
 	//Parse token, to find current user information
@@ -615,7 +624,7 @@ func (s *friendServer) GetFriendList(ctx context.Context, req *pbFriend.GetFrien
 	return &pbFriend.GetFriendListResp{FriendInfoList: userInfoList}, nil
 }
 
-//received
+// received
 func (s *friendServer) GetFriendApplyList(ctx context.Context, req *pbFriend.GetFriendApplyListReq) (*pbFriend.GetFriendApplyListResp, error) {
 	log.NewInfo(req.CommID.OperationID, "GetFriendApplyList args ", req.String())
 	//Parse token, to find current user information
