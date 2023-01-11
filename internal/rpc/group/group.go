@@ -135,6 +135,7 @@ func (s *groupServer) CreateGroup(ctx context.Context, req *pbGroup.CreateGroupR
 	if groupId == "" {
 		groupId = utils.Md5(req.OperationID + strconv.FormatInt(time.Now().UnixNano(), 10))
 		bi := big.NewInt(0)
+		// axis 选择md5串的前5位的十六进制字符串转换位整数
 		bi.SetString(groupId[0:8], 16)
 		groupId = bi.String()
 	}
@@ -173,7 +174,7 @@ func (s *groupServer) CreateGroup(ctx context.Context, req *pbGroup.CreateGroupR
 	}
 
 	if req.GroupInfo.GroupType != constant.SuperGroup {
-		//to group member
+		//to group member axis 类似微信在创建群聊时，可以先选择初始化在群的用户名单
 		for _, user := range req.InitMemberList {
 			us, err := rocksCache.GetUserInfoFromCache(user.UserID)
 			if err != nil {
@@ -203,7 +204,7 @@ func (s *groupServer) CreateGroup(ctx context.Context, req *pbGroup.CreateGroupR
 			return resp, nil
 		}
 		utils.CopyStructFields(resp.GroupInfo, group)
-		memberCount, err := rocksCache.GetGroupMemberNumFromCache(groupId)
+		memberCount, err := rocksCache.GetGroupMemberNumFromCache(groupId) // axis 获取的同时把新建群聊的在群人数写入redis
 		resp.GroupInfo.MemberCount = uint32(memberCount)
 		if err != nil {
 			log.NewError(req.OperationID, "GetGroupMemberNumByGroupID failed ", err.Error(), groupId)
@@ -215,7 +216,7 @@ func (s *groupServer) CreateGroup(ctx context.Context, req *pbGroup.CreateGroupR
 			resp.GroupInfo.OwnerUserID = req.OwnerUserID
 			okUserIDList = append(okUserIDList, req.OwnerUserID)
 		}
-		// superGroup stored in mongodb
+		// superGroup stored in mongodb axis 超级大群的数据写入mongoDB中
 	} else {
 		for _, v := range req.InitMemberList {
 			okUserIDList = append(okUserIDList, v.UserID)
@@ -232,6 +233,7 @@ func (s *groupServer) CreateGroup(ctx context.Context, req *pbGroup.CreateGroupR
 		log.NewInfo(req.OperationID, "rpc CreateGroup return ", resp.String())
 		if req.GroupInfo.GroupType != constant.SuperGroup {
 			for _, userID := range okUserIDList {
+				// axis 删除对应用户加入群聊的id列表的缓存
 				if err := rocksCache.DelJoinedGroupIDListFromCache(userID); err != nil {
 					log.NewWarn(req.OperationID, utils.GetSelfFuncName(), userID, err.Error())
 				}
@@ -243,6 +245,7 @@ func (s *groupServer) CreateGroup(ctx context.Context, req *pbGroup.CreateGroupR
 					log.NewWarn(req.OperationID, utils.GetSelfFuncName(), userID, err.Error())
 				}
 			}
+			// axis 可能是因为超级群聊人数过多【OpenIM最高支持10万人大群】，所以超级大群的通知采用异步通知的方式
 			go func() {
 				for _, v := range okUserIDList {
 					chat.SuperGroupNotification(req.OperationID, v, v)
@@ -272,7 +275,7 @@ func (s *groupServer) GetJoinedGroupList(ctx context.Context, req *pbGroup.GetJo
 	var resp pbGroup.GetJoinedGroupListResp
 	for _, v := range joinedGroupList {
 		var groupNode open_im_sdk.GroupInfo
-		num, err := rocksCache.GetGroupMemberNumFromCache(v)
+		num, err := rocksCache.GetGroupMemberNumFromCache(v) // axis 群聊人数获取比较频繁，故放置在缓存中
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), err.Error(), v)
 			continue
@@ -287,9 +290,11 @@ func (s *groupServer) GetJoinedGroupList(ctx context.Context, req *pbGroup.GetJo
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), err.Error(), v)
 			continue
 		}
+		// axis 不返回超级大群的信息，可能是因为在实际场景下，超级大群的数量一般就一个或者计算群聊人数时db的性能不高？
 		if group.GroupType == constant.SuperGroup {
 			continue
 		}
+		// axis 群聊解散的情况
 		if group.Status == constant.GroupStatusDismissed {
 			log.NewError(req.OperationID, "constant.GroupStatusDismissed ", group)
 			continue
@@ -327,6 +332,7 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 		return &pbGroup.InviteUserToGroupResp{ErrCode: constant.ErrStatus.ErrCode, ErrMsg: errMsg}, nil
 	}
 	var resp pbGroup.InviteUserToGroupResp
+	// axis 需要验证，则只有群聊管理员或者系统管理员才能邀请新用户
 	if groupInfo.NeedVerification == constant.AllNeedVerification &&
 		!imdb.IsGroupOwnerAdmin(req.GroupID, req.OpUserID) && !token_verify.IsManagerUserID(req.OpUserID) {
 		var resp pbGroup.InviteUserToGroupResp
@@ -337,7 +343,7 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 			groupRequest.GroupID = req.GroupID
 			groupRequest.JoinSource = constant.JoinByInvitation
 			groupRequest.InviterUserID = req.OpUserID
-			err = imdb.InsertIntoGroupRequest(groupRequest)
+			err = imdb.InsertIntoGroupRequest(groupRequest) // axis 将加群请求记录到db
 			if err != nil {
 				var resultNode pbGroup.Id2Result
 				resultNode.Result = -1
@@ -359,7 +365,8 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 				chat.JoinGroupApplicationNotification(&joinReq)
 			}
 		}
-		log.NewInfo(req.OperationID, "InviteUserToGroup rpc return ", resp)
+		// TODO: 这里违反了Mutex不可复制的情况，不过这里估计问题不大 axis
+		log.NewInfo(req.OperationID, "InviteUserToGroup rpc return ", resp.String())
 		return &resp, nil
 	}
 	//

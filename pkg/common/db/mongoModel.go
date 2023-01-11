@@ -10,13 +10,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"sync"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/gogo/protobuf/sortkeys"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"math/rand"
-	"sync"
 
 	//"github.com/garyburd/redigo/redis"
 	"github.com/golang/protobuf/proto"
@@ -918,10 +919,10 @@ func (d *DataBases) DeleteOneWorkMoment(workMomentID string) error {
 func (d *DataBases) DeleteComment(workMomentID, contentID, opUserID string) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
-	_, err := c.UpdateOne(ctx, bson.D{{"work_moment_id", workMomentID},
-		{"$or", bson.A{
-			bson.D{{"user_id", opUserID}},
-			bson.D{{"comments", bson.M{"$elemMatch": bson.M{"user_id": opUserID}}}},
+	_, err := c.UpdateOne(ctx, bson.D{{Key: "work_moment_id", Value: workMomentID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "user_id", Value: opUserID}},
+			bson.D{{Key: "comments", Value: bson.M{"$elemMatch": bson.M{"user_id": opUserID}}}},
 		},
 		}}, bson.M{"$pull": bson.M{"comments": bson.M{"content_id": contentID}}})
 	return err
@@ -989,11 +990,11 @@ func (d *DataBases) GetUserWorkMoments(opUserID, userID string, showNumber, page
 	var workMomentList []WorkMoment
 	findOpts := options.Find().SetLimit(int64(showNumber)).SetSkip(int64(showNumber) * (int64(pageNumber) - 1)).SetSort(bson.M{"create_time": -1})
 	result, err := c.Find(ctx, bson.D{ // 等价条件: select * from
-		{"user_id", userID},
-		{"$or", bson.A{
-			bson.D{{"permission", constant.WorkMomentPermissionCantSee}, {"permission_user_id_list", bson.D{{"$nin", bson.A{opUserID}}}}},
-			bson.D{{"permission", constant.WorkMomentPermissionCanSee}, {"permission_user_id_list", bson.D{{"$in", bson.A{opUserID}}}}},
-			bson.D{{"permission", constant.WorkMomentPublic}},
+		{Key: "user_id", Value: userID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCantSee}, {Key: "permission_user_id_list", Value: bson.D{{"$nin", bson.A{opUserID}}}}},
+			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCanSee}, {Key: "permission_user_id_list", Value: bson.D{{"$in", bson.A{opUserID}}}}},
+			bson.D{{Key: "permission", Value: constant.WorkMomentPublic}},
 		}},
 	}, findOpts)
 	if err != nil {
@@ -1010,23 +1011,23 @@ func (d *DataBases) GetUserFriendWorkMoments(showNumber, pageNumber int32, userI
 	findOpts := options.Find().SetLimit(int64(showNumber)).SetSkip(int64(showNumber) * (int64(pageNumber) - 1)).SetSort(bson.M{"create_time": -1})
 	var filter bson.D
 	permissionFilter := bson.D{
-		{"$or", bson.A{
-			bson.D{{"permission", constant.WorkMomentPermissionCantSee}, {"permission_user_id_list", bson.D{{"$nin", bson.A{userID}}}}},
-			bson.D{{"permission", constant.WorkMomentPermissionCanSee}, {"permission_user_id_list", bson.D{{"$in", bson.A{userID}}}}},
-			bson.D{{"permission", constant.WorkMomentPublic}},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCantSee}, {Key: "permission_user_id_list", Value: bson.D{{Key: "$nin", Value: bson.A{userID}}}}},
+			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCanSee}, {Key: "permission_user_id_list", Value: bson.D{{Key: "$in", Value: bson.A{userID}}}}},
+			bson.D{{Key: "permission", Value: constant.WorkMomentPublic}},
 		}}}
 	if config.Config.WorkMoment.OnlyFriendCanSee {
 		filter = bson.D{
-			{"$or", bson.A{
-				bson.D{{"user_id", userID}}, //self
-				bson.D{{"$and", bson.A{permissionFilter, bson.D{{"user_id", bson.D{{"$in", friendIDList}}}}}}},
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "user_id", Value: userID}}, //self
+				bson.D{{Key: "$and", Value: bson.A{permissionFilter, bson.D{{Key: "user_id", Value: bson.D{{Key: "$in", Value: friendIDList}}}}}}},
 			},
 			},
 		}
 	} else {
 		filter = bson.D{
-			{"$or", bson.A{
-				bson.D{{"user_id", userID}}, //self
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "user_id", Value: userID}}, //self
 				permissionFilter,
 			},
 			},
@@ -1052,7 +1053,8 @@ type UserToSuperGroup struct {
 }
 
 func (d *DataBases) CreateSuperGroup(groupID string, initMemberIDList []string, memberNumCount int) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()  // axis fix leak
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSuperGroup)
 	session, err := d.mongoClient.StartSession()
 	if err != nil {
@@ -1076,6 +1078,7 @@ func (d *DataBases) CreateSuperGroup(groupID string, initMemberIDList []string, 
 		})
 	}
 	upsert := true
+	// 配置，如果没有数据就插入，有数据就更新
 	opts := &options.UpdateOptions{
 		Upsert: &upsert,
 	}
