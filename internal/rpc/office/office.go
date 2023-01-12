@@ -38,7 +38,7 @@ type officeServer struct {
 
 func NewOfficeServer(port int) *officeServer {
 	log.NewPrivateLog(constant.LogFileName)
-	ch := make(chan tagSendStruct, 100000)
+	ch := make(chan tagSendStruct, 100000) // 初始化tagMsg发送channel的大小为10万 axis
 	return &officeServer{
 		rpcPort:         port,
 		rpcRegisterName: config.Config.RpcRegisterName.OpenImOfficeName,
@@ -120,6 +120,7 @@ func (s *officeServer) sendTagMsgRoutine() {
 	for {
 		select {
 		case v := <-s.ch:
+			// TODO: axis 标签消息是啥？
 			msg.TagSendMessage(v.operationID, v.user, v.userID, v.content, v.senderPlatformID)
 			time.Sleep(time.Millisecond * 100)
 		}
@@ -132,6 +133,7 @@ func (s *officeServer) GetUserTags(_ context.Context, req *pbOffice.GetUserTagsR
 		CommonResp: &pbOffice.CommonResp{},
 		Tags:       []*pbOffice.Tag{},
 	}
+	// 获取所有标签
 	tags, err := db.DB.GetUserTags(req.UserID)
 	if err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUserTags failed", err.Error())
@@ -145,6 +147,7 @@ func (s *officeServer) GetUserTags(_ context.Context, req *pbOffice.GetUserTagsR
 			TagID:   v.TagID,
 			TagName: v.TagName,
 		}
+		// axis 获取对应标签下的用户信息列表
 		for _, userID := range v.UserList {
 			UserName, err := im_mysql_model.GetUserNameByUserID(userID)
 			if err != nil {
@@ -164,9 +167,10 @@ func (s *officeServer) GetUserTags(_ context.Context, req *pbOffice.GetUserTagsR
 
 func (s *officeServer) CreateTag(_ context.Context, req *pbOffice.CreateTagReq) (resp *pbOffice.CreateTagResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "CreateTag req", req.String())
-	userIDList := utils.RemoveRepeatedStringInList(req.UserIDList)
+	userIDList := utils.RemoveRepeatedStringInList(req.UserIDList) // axis Userid 去重
 	log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "userIDList: ", userIDList)
 	resp = &pbOffice.CreateTagResp{CommonResp: &pbOffice.CommonResp{}}
+	// axis 在mongoDB中插入新标签数据
 	if err := db.DB.CreateTag(req.UserID, req.TagName, userIDList); err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUserTags failed", err.Error())
 		resp.CommonResp.ErrMsg = constant.ErrDB.ErrMsg
@@ -193,8 +197,8 @@ func (s *officeServer) DeleteTag(_ context.Context, req *pbOffice.DeleteTagReq) 
 func (s *officeServer) SetTag(_ context.Context, req *pbOffice.SetTagReq) (resp *pbOffice.SetTagResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbOffice.SetTagResp{CommonResp: &pbOffice.CommonResp{}}
-	increaseUserIDList := utils.RemoveRepeatedStringInList(req.IncreaseUserIDList)
-	reduceUserIDList := utils.RemoveRepeatedStringInList(req.ReduceUserIDList)
+	increaseUserIDList := utils.RemoveRepeatedStringInList(req.IncreaseUserIDList) // axis 要加入标签的用户id列表
+	reduceUserIDList := utils.RemoveRepeatedStringInList(req.ReduceUserIDList)     // axis 要移出标签的用户id列表
 	if err := db.DB.SetTag(req.UserID, req.TagID, req.NewName, increaseUserIDList, reduceUserIDList); err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), "SetTag failed", increaseUserIDList, reduceUserIDList, err.Error())
 		resp.CommonResp.ErrMsg = constant.ErrDB.ErrMsg
@@ -205,11 +209,13 @@ func (s *officeServer) SetTag(_ context.Context, req *pbOffice.SetTagReq) (resp 
 	return resp, nil
 }
 
+// SendMsg2Tag 给对应标签下的所有用户群发消息
 func (s *officeServer) SendMsg2Tag(_ context.Context, req *pbOffice.SendMsg2TagReq) (resp *pbOffice.SendMsg2TagResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbOffice.SendMsg2TagResp{CommonResp: &pbOffice.CommonResp{}}
 	var tagUserIDList []string
 	for _, tagID := range req.TagList {
+		// axis req.SendID 表示当前发送消息的用户id
 		userIDList, err := db.DB.GetUserIDListByTagID(req.SendID, tagID)
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUserIDListByTagID failed", err.Error())
@@ -260,6 +266,7 @@ func (s *officeServer) SendMsg2Tag(_ context.Context, req *pbOffice.SendMsg2TagR
 			userIDList = append(userIDList[:i], userIDList[i+1:]...)
 		}
 	}
+	// axis 一次性最多群发1048576【一百多万】个用户
 	if unsafe.Sizeof(userIDList) > 1024*1024 {
 		log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "size", unsafe.Sizeof(userIDList))
 		resp.CommonResp.ErrMsg = constant.ErrSendLimit.ErrMsg
@@ -285,9 +292,10 @@ func (s *officeServer) SendMsg2Tag(_ context.Context, req *pbOffice.SendMsg2TagR
 		}
 		select {
 		case s.ch <- t:
+			// axis 成功入队列就表示发送成功了
 			log.NewDebug(t.operationID, utils.GetSelfFuncName(), "msg: ", t, "send success")
 			successUserIDList = append(successUserIDList, userID)
-		// if channel is full, return grpc req
+		// if channel is full, return grpc req，10万缓冲都装不下了，确实需要报异常 axis
 		case <-time.After(1 * time.Second):
 			log.NewError(t.operationID, utils.GetSelfFuncName(), s.ch, "channel is full")
 			resp.CommonResp.ErrCode = constant.ErrSendLimit.ErrCode
@@ -321,6 +329,7 @@ func (s *officeServer) SendMsg2Tag(_ context.Context, req *pbOffice.SendMsg2TagR
 	tagSendLogs.Content = req.Content
 	tagSendLogs.SenderPlatformID = req.SenderPlatformID
 	tagSendLogs.SendTime = time.Now().Unix()
+	// 存储发送成功的tagMsg日志到mongoDB中 axis
 	if err := db.DB.SaveTagSendLog(&tagSendLogs); err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), "SaveTagSendLog failed", tagSendLogs, err.Error())
 		resp.CommonResp.ErrCode = constant.ErrDB.ErrCode
@@ -385,6 +394,7 @@ func (s *officeServer) GetUserTagByID(_ context.Context, req *pbOffice.GetUserTa
 	return resp, nil
 }
 
+// CreateOneWorkMoment 创建一条朋友圈
 func (s *officeServer) CreateOneWorkMoment(_ context.Context, req *pbOffice.CreateOneWorkMomentReq) (resp *pbOffice.CreateOneWorkMomentResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbOffice.CreateOneWorkMomentResp{CommonResp: &pbOffice.CommonResp{}}
@@ -596,7 +606,7 @@ func (s *officeServer) CommentOneWorkMoment(_ context.Context, req *pbOffice.Com
 		Content:             comment.Content,
 		CreateTime:          comment.CreateTime,
 	}
-	log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "msg: ", *workMomentNotificationMsg)
+	log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "msg: ", (*workMomentNotificationMsg).String())
 	if req.UserID != workMoment.UserID {
 		msg.WorkMomentSendNotification(req.OperationID, workMoment.UserID, workMomentNotificationMsg)
 	}

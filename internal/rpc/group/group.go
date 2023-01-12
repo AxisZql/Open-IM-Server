@@ -1332,6 +1332,7 @@ func (s *groupServer) SetGroupInfo(ctx context.Context, req *pbGroup.SetGroupInf
 			return &pbGroup.SetGroupInfoResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrInternal.ErrCode, ErrMsg: errMsg}}, nil
 		}
 		nClient := pbConversation.NewConversationClient(nEtcdConn)
+		// axis 修改会话信息
 		conversationReply, err := nClient.ModifyConversationField(context.Background(), &conversationReq)
 		if err != nil {
 			log.NewError(conversationReq.OperationID, "ModifyConversationField rpc failed, ", conversationReq.String(), err.Error())
@@ -1342,6 +1343,7 @@ func (s *groupServer) SetGroupInfo(ctx context.Context, req *pbGroup.SetGroupInf
 	return &pbGroup.SetGroupInfoResp{CommonResp: &pbGroup.CommonResp{}}, nil
 }
 
+// TransferGroupOwner 转让群主 axis
 func (s *groupServer) TransferGroupOwner(_ context.Context, req *pbGroup.TransferGroupOwnerReq) (*pbGroup.TransferGroupOwnerResp, error) {
 	log.NewInfo(req.OperationID, "TransferGroupOwner ", req.String())
 
@@ -1359,6 +1361,7 @@ func (s *groupServer) TransferGroupOwner(_ context.Context, req *pbGroup.Transfe
 		log.NewError(req.OperationID, "same owner ", req.OldOwnerUserID, req.NewOwnerUserID)
 		return &pbGroup.TransferGroupOwnerResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrArgs.ErrCode, ErrMsg: constant.ErrArgs.ErrMsg}}, nil
 	}
+	// axis 旧群主变成普通成员
 	groupMemberInfo := db.GroupMember{GroupID: req.GroupID, UserID: req.OldOwnerUserID, RoleLevel: constant.GroupOrdinaryUsers}
 	err = imdb.UpdateGroupMemberInfo(groupMemberInfo)
 	if err != nil {
@@ -1371,6 +1374,7 @@ func (s *groupServer) TransferGroupOwner(_ context.Context, req *pbGroup.Transfe
 		log.NewError(req.OperationID, "UpdateGroupMemberInfo failed ", groupMemberInfo)
 		return &pbGroup.TransferGroupOwnerResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}}, nil
 	}
+	// axis TODO: 这里只删除新旧群主的群成员信息缓存合适？
 	err = rocksCache.DelGroupMemberInfoFromCache(req.GroupID, req.NewOwnerUserID)
 	if err != nil {
 		log.NewError(req.OperationID, "DelGroupMemberInfoFromCache failed ", req.GroupID, req.NewOwnerUserID)
@@ -1384,6 +1388,7 @@ func (s *groupServer) TransferGroupOwner(_ context.Context, req *pbGroup.Transfe
 
 }
 
+// GetGroups 分页获取群聊 axis
 func (s *groupServer) GetGroups(_ context.Context, req *pbGroup.GetGroupsReq) (*pbGroup.GetGroupsResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "GetGroups ", req.String())
 	resp := &pbGroup.GetGroupsResp{
@@ -1391,6 +1396,7 @@ func (s *groupServer) GetGroups(_ context.Context, req *pbGroup.GetGroupsReq) (*
 		CMSGroups:  []*pbGroup.CMSGroup{},
 		Pagination: &open_im_sdk.ResponsePagination{CurrentPage: req.Pagination.PageNumber, ShowNumber: req.Pagination.ShowNumber},
 	}
+	// 通过群号查询群
 	if req.GroupID != "" {
 		groupInfoDB, err := imdb.GetGroupInfoByGroupID(req.GroupID)
 		if err != nil {
@@ -1423,6 +1429,7 @@ func (s *groupServer) GetGroups(_ context.Context, req *pbGroup.GetGroupsReq) (*
 		groupInfo.CreateTime = uint32(groupInfoDB.CreateTime.Unix())
 		resp.CMSGroups = append(resp.CMSGroups, &pbGroup.CMSGroup{GroupInfo: groupInfo, GroupOwnerUserName: groupMember.Nickname, GroupOwnerUserID: groupMember.UserID})
 	} else {
+		// 通过群名模糊查询群聊
 		groups, count, err := imdb.GetGroupsByName(req.GroupName, req.Pagination.PageNumber, req.Pagination.ShowNumber)
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetGroupsByName error", req.String(), req.GroupName, req.Pagination.PageNumber, req.Pagination.ShowNumber)
@@ -1446,6 +1453,7 @@ func (s *groupServer) GetGroups(_ context.Context, req *pbGroup.GetGroupsReq) (*
 	return resp, nil
 }
 
+// GetGroupMembersCMS 根据昵称模糊搜索群成员 axis
 func (s *groupServer) GetGroupMembersCMS(_ context.Context, req *pbGroup.GetGroupMembersCMSReq) (*pbGroup.GetGroupMembersCMSResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "args:", req.String())
 	resp := &pbGroup.GetGroupMembersCMSResp{CommonResp: &pbGroup.CommonResp{}}
@@ -1499,6 +1507,7 @@ func (s *groupServer) GetUserReqApplicationList(_ context.Context, req *pbGroup.
 			log.Error(req.OperationID, "GetGroupInfoByGroupID failed ", err.Error(), groupReq.GroupID)
 			continue
 		}
+		// TODO: 这里用户只有一个，但是重复获取用户信息
 		user, err := imdb.GetUserByUserID(groupReq.UserID)
 		if err != nil {
 			log.Error(req.OperationID, "GetUserByUserID failed ", err.Error(), groupReq.UserID)
@@ -1516,6 +1525,7 @@ func (s *groupServer) GetUserReqApplicationList(_ context.Context, req *pbGroup.
 	return resp, nil
 }
 
+// DismissGroup 解散群聊 axis
 func (s *groupServer) DismissGroup(ctx context.Context, req *pbGroup.DismissGroupReq) (*pbGroup.DismissGroupResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "rpc args ", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) && !imdb.IsGroupOwnerAdmin(req.GroupID, req.OpUserID) {
@@ -1538,7 +1548,7 @@ func (s *groupServer) DismissGroup(ctx context.Context, req *pbGroup.DismissGrou
 		if err != nil {
 			log.NewError(req.OperationID, "GetGroupMemberListByGroupID failed,", err.Error(), req.GroupID)
 		}
-		//modify quitter conversation info
+		//modify quitter conversation info  群聊解散后，更新之前在群聊内的用户的会话信息
 		var reqPb pbUser.SetConversationReq
 		var c pbConversation.Conversation
 		for _, v := range memberList {
@@ -1611,9 +1621,10 @@ func (s *groupServer) DismissGroup(ctx context.Context, req *pbGroup.DismissGrou
 //  rpc MuteGroup(MuteGroupReq) returns(MuteGroupResp);
 //  rpc CancelMuteGroup(CancelMuteGroupReq) returns(CancelMuteGroupResp);
 
+// MuteGroupMember 将群中对应成员禁言 axis
 func (s *groupServer) MuteGroupMember(ctx context.Context, req *pbGroup.MuteGroupMemberReq) (*pbGroup.MuteGroupMemberResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "rpc args ", req.String())
-	opFlag, err := s.getGroupUserLevel(req.GroupID, req.OpUserID)
+	opFlag, err := s.getGroupUserLevel(req.GroupID, req.OpUserID) // 0普通成员，1 app管理员，2群主，3群管理员
 	if err != nil {
 		errMsg := req.OperationID + " getGroupUserLevel failed " + req.GroupID + req.OpUserID + err.Error()
 		log.Error(req.OperationID, errMsg)
@@ -1675,6 +1686,7 @@ func (s *groupServer) CancelMuteGroupMember(ctx context.Context, req *pbGroup.Ca
 		errMsg := req.OperationID + " GetGroupMemberInfoByGroupIDAndUserID failed " + req.GroupID + req.UserID + err.Error()
 		return &pbGroup.CancelMuteGroupMemberResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrAccess.ErrCode, ErrMsg: errMsg}}, nil
 	}
+	// 群主被禁言，只有app管理员才可以取消禁言
 	if mutedInfo.RoleLevel == constant.GroupOwner && opFlag != 1 {
 		errMsg := req.OperationID + " mutedInfo.RoleLevel == constant.GroupOwner " + req.GroupID + req.UserID
 		return &pbGroup.CancelMuteGroupMemberResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrAccess.ErrCode, ErrMsg: errMsg}}, nil
@@ -1783,6 +1795,7 @@ func (s *groupServer) CancelMuteGroup(ctx context.Context, req *pbGroup.CancelMu
 	return &pbGroup.CancelMuteGroupResp{CommonResp: &pbGroup.CommonResp{ErrCode: 0, ErrMsg: ""}}, nil
 }
 
+// SetGroupMemberNickname 设置用户在群聊中的昵称 axis
 func (s *groupServer) SetGroupMemberNickname(ctx context.Context, req *pbGroup.SetGroupMemberNicknameReq) (*pbGroup.SetGroupMemberNicknameResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "rpc args ", req.String())
 	if req.OpUserID != req.UserID && !token_verify.IsManagerUserID(req.OpUserID) {
@@ -1865,6 +1878,7 @@ func (s *groupServer) SetGroupMemberInfo(ctx context.Context, req *pbGroup.SetGr
 	return resp, nil
 }
 
+// GetGroupAbstractInfo 获取群组摘要信息
 func (s *groupServer) GetGroupAbstractInfo(c context.Context, req *pbGroup.GetGroupAbstractInfoReq) (*pbGroup.GetGroupAbstractInfoResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp := &pbGroup.GetGroupAbstractInfoResp{CommonResp: &pbGroup.CommonResp{}}

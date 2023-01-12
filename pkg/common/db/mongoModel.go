@@ -748,7 +748,8 @@ type Tag struct {
 }
 
 func (d *DataBases) GetUserTags(userID string) ([]Tag, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cTag)
 	var tags []Tag
 	cursor, err := c.Find(ctx, bson.M{"user_id": userID})
@@ -762,7 +763,8 @@ func (d *DataBases) GetUserTags(userID string) ([]Tag, error) {
 }
 
 func (d *DataBases) CreateTag(userID, tagName string, userList []string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cTag)
 	tagID := generateTagID(tagName, userID)
 	tag := Tag{
@@ -776,7 +778,8 @@ func (d *DataBases) CreateTag(userID, tagName string, userList []string) error {
 }
 
 func (d *DataBases) GetTagByID(userID, tagID string) (Tag, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cTag)
 	var tag Tag
 	err := c.FindOne(ctx, bson.M{"user_id": userID, "tag_id": tagID}).Decode(&tag)
@@ -784,16 +787,19 @@ func (d *DataBases) GetTagByID(userID, tagID string) (Tag, error) {
 }
 
 func (d *DataBases) DeleteTag(userID, tagID string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cTag)
 	_, err := c.DeleteOne(ctx, bson.M{"user_id": userID, "tag_id": tagID})
 	return err
 }
 
 func (d *DataBases) SetTag(userID, tagID, newName string, increaseUserIDList []string, reduceUserIDList []string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cTag)
 	var tag Tag
+	// axis 每个tag类似微信都是有当前账号的所有者创建的，故此处获取当前用户对应tag的详细信息
 	if err := c.FindOne(ctx, bson.M{"tag_id": tagID, "user_id": userID}).Decode(&tag); err != nil {
 		return err
 	}
@@ -805,6 +811,7 @@ func (d *DataBases) SetTag(userID, tagID, newName string, increaseUserIDList []s
 	}
 	tag.UserList = append(tag.UserList, increaseUserIDList...)
 	tag.UserList = utils.RemoveRepeatedStringInList(tag.UserList)
+	// axis 从原tag中存在的用户中移除要移除的用户
 	for _, v := range reduceUserIDList {
 		for i2, v2 := range tag.UserList {
 			if v == v2 {
@@ -827,7 +834,8 @@ func (d *DataBases) SetTag(userID, tagID, newName string, increaseUserIDList []s
 
 func (d *DataBases) GetUserIDListByTagID(userID, tagID string) ([]string, error) {
 	var tag Tag
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cTag)
 	_ = c.FindOne(ctx, bson.M{"user_id": userID, "tag_id": tagID}).Decode(&tag)
 	return tag.UserList, nil
@@ -847,7 +855,8 @@ type TagSendLog struct {
 }
 
 func (d *DataBases) SaveTagSendLog(tagSendLog *TagSendLog) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSendLog)
 	_, err := c.InsertOne(ctx, tagSendLog)
 	return err
@@ -855,7 +864,8 @@ func (d *DataBases) SaveTagSendLog(tagSendLog *TagSendLog) error {
 
 func (d *DataBases) GetTagSendLogs(userID string, showNumber, pageNumber int32) ([]TagSendLog, error) {
 	var tagSendLogs []TagSendLog
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSendLog)
 	findOpts := options.Find().SetLimit(int64(showNumber)).SetSkip(int64(showNumber) * (int64(pageNumber) - 1)).SetSort(bson.M{"send_time": -1})
 	cursor, err := c.Find(ctx, bson.M{"send_id": userID}, findOpts)
