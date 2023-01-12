@@ -168,6 +168,7 @@ func GetGroupMemberByGroupID(groupID string, filter int32, begin int32, maxNumbe
 		return nil, nil
 	}
 
+	// TODO: axis 又是这样分页？认真的？
 	var end int32
 	if begin+int32(maxNumber) < int32(len(memberList)) {
 		end = begin + maxNumber

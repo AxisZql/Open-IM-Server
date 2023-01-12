@@ -89,7 +89,7 @@ func GetConversations(OwnerUserID string, conversationIDs []string) ([]db.Conver
 }
 
 func GetConversationsByConversationIDMultipleOwner(OwnerUserIDList []string, conversationID string) ([]db.Conversation, error) {
-	var conversations []db.Conversation
+	var conversations []db.Conversation // axis TODO: 这个conversation表中有两个主键是啥回事
 	err := db.DB.MysqlDB.DefaultGormDB().Model(&db.Conversation{}).Where("owner_user_id IN (?) and  conversation_id=?", OwnerUserIDList, conversationID).Find(&conversations).Error
 	return conversations, err
 }

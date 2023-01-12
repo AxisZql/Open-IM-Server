@@ -36,7 +36,6 @@ func FriendDBCopyOpenIM(dst *open_im_sdk.FriendInfo, src *db.Friend) error {
 	return nil
 }
 
-//
 func FriendRequestOpenIMCopyDB(dst *db.FriendRequest, src *open_im_sdk.FriendRequest) {
 	utils.CopyStructFields(dst, src)
 	dst.CreateTime = utils.UnixSecondToTime(int64(src.CreateTime))
@@ -113,6 +112,7 @@ func GroupMemberOpenIMCopyDB(dst *db.GroupMember, src *open_im_sdk.GroupMemberFu
 func GroupMemberDBCopyOpenIM(dst *open_im_sdk.GroupMemberFullInfo, src *db.GroupMember) error {
 	utils.CopyStructFields(dst, src)
 	if token_verify.IsManagerUserID(src.UserID) {
+		// axis 如果是系统管理员则获取其详细的用户信息
 		u, err := imdb.GetUserByUserID(src.UserID)
 		if err != nil {
 			return utils.Wrap(err, "")

@@ -23,6 +23,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+/**
+* @Desc: Conversation 表示一个会话【框】实例
+ */
+
 type rpcConversation struct {
 	rpcPort         int
 	rpcRegisterName string

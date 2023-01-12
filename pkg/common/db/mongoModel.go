@@ -1054,7 +1054,7 @@ type UserToSuperGroup struct {
 
 func (d *DataBases) CreateSuperGroup(groupID string, initMemberIDList []string, memberNumCount int) error {
 	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
-	defer cancle()  // axis fix leak
+	defer cancle() // axis fix leak
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSuperGroup)
 	session, err := d.mongoClient.StartSession()
 	if err != nil {
@@ -1108,7 +1108,8 @@ func (d *DataBases) GetSuperGroup(groupID string) (SuperGroup, error) {
 }
 
 func (d *DataBases) AddUserToSuperGroup(groupID string, userIDList []string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSuperGroup)
 	session, err := d.mongoClient.StartSession()
 	if err != nil {
@@ -1147,7 +1148,8 @@ func (d *DataBases) AddUserToSuperGroup(groupID string, userIDList []string) err
 }
 
 func (d *DataBases) RemoverUserFromSuperGroup(groupID string, userIDList []string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSuperGroup)
 	session, err := d.mongoClient.StartSession()
 	if err != nil {
@@ -1209,6 +1211,7 @@ func (d *DataBases) RemoveGroupFromUser(ctx, sCtx context.Context, groupID strin
 		})
 	}
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cUserToSuperGroup)
+	// $pull 操作符表示删除符合指定条件的记录的对应属性值
 	_, err := c.UpdateOne(sCtx, bson.M{"user_id": bson.M{"$in": userIDList}}, bson.M{"$pull": bson.M{"group_id_list": groupID}})
 	if err != nil {
 		return utils.Wrap(err, "UpdateOne transaction failed")

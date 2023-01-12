@@ -170,6 +170,7 @@ func GetGroupMemberIDListFromCache(groupID string) ([]string, error) {
 		}
 		return string(bytes), nil
 	}
+	// axis redis 中GROUP_CACHE:GroupID 记录的是当前群聊的成员id列表
 	groupIDListStr, err := db.DB.Rc.Fetch(groupCache+groupID, time.Second*30*60, f)
 	if err != nil {
 		return nil, utils.Wrap(err, "")
@@ -257,7 +258,7 @@ func GetGroupMembersInfoFromCache(count, offset int32, groupID string) ([]*db.Gr
 		if stop >= l {
 			stop = l
 		}
-		groupMemberIDList = groupMemberIDList[start:stop]
+		groupMemberIDList = groupMemberIDList[start:stop] // TODO: axis 这种全量获取，然后分页返回，只是为了减少回传给客户端的数据传输成本吗？
 	} else {
 		if l < 1000 {
 			stop = l

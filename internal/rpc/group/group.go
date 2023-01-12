@@ -395,7 +395,7 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 			var toInsertInfo db.GroupMember
 			utils.CopyStructFields(&toInsertInfo, toUserInfo)
 			toInsertInfo.GroupID = req.GroupID
-			toInsertInfo.RoleLevel = constant.GroupOrdinaryUsers
+			toInsertInfo.RoleLevel = constant.GroupOrdinaryUsers // axis 用户在群聊中的默认等级为普通用户
 			toInsertInfo.OperatorUserID = req.OpUserID
 			toInsertInfo.InviterUserID = req.OpUserID
 			toInsertInfo.JoinSource = constant.JoinByInvitation
@@ -407,17 +407,19 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 				continue
 			}
 			okUserIDList = append(okUserIDList, v)
-			err = db.DB.AddGroupMember(req.GroupID, toUserInfo.UserID)
+			err = db.DB.AddGroupMember(req.GroupID, toUserInfo.UserID) // axis 这部不执行任何操作，因为只有超级大群的信息才会写入mongoDB中
 			if err != nil {
 				log.NewError(req.OperationID, "AddGroupMember failed ", err.Error(), req.GroupID, toUserInfo.UserID)
 			}
 			resp.Id2ResultList = append(resp.Id2ResultList, &resultNode)
 		}
-		var haveConUserID []string
+		var haveConUserID []string // axis 记录在当前群聊中有conversation记录的被邀请用户的id
+		// axis 在conversation表中根据当前群聊id和对应被邀请用户的id获取conversation记录
 		conversations, err := imdb.GetConversationsByConversationIDMultipleOwner(okUserIDList, utils.GetConversationIDBySessionType(req.GroupID, constant.GroupChatType))
 		if err != nil {
 			log.NewError(req.OperationID, "GetConversationsByConversationIDMultipleOwner failed ", err.Error(), req.GroupID, constant.GroupChatType)
 		}
+		// TODO: 这里conversation会不会存在重复的问题
 		for _, v := range conversations {
 			haveConUserID = append(haveConUserID, v.OwnerUserID)
 		}
@@ -526,10 +528,11 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 		}
 	}
 
-	log.NewInfo(req.OperationID, "InviteUserToGroup rpc return ", resp)
+	log.NewInfo(req.OperationID, "InviteUserToGroup rpc return ", resp.String())
 	return &resp, nil
 }
 
+// GetGroupAllMember 分页获取群聊用户的信息
 func (s *groupServer) GetGroupAllMember(ctx context.Context, req *pbGroup.GetGroupAllMemberReq) (*pbGroup.GetGroupAllMemberResp, error) {
 	log.NewInfo(req.OperationID, "GetGroupAllMember, args ", req.String())
 	var resp pbGroup.GetGroupAllMemberResp
@@ -558,6 +561,7 @@ func (s *groupServer) GetGroupAllMember(ctx context.Context, req *pbGroup.GetGro
 	return &resp, nil
 }
 
+// GetGroupMemberList 根据群成员的身份等级来最多获取32条群成员信息
 func (s *groupServer) GetGroupMemberList(ctx context.Context, req *pbGroup.GetGroupMemberListReq) (*pbGroup.GetGroupMemberListResp, error) {
 	log.NewInfo(req.OperationID, "GetGroupMemberList args ", req.String())
 	var resp pbGroup.GetGroupMemberListResp
@@ -605,6 +609,7 @@ func (s *groupServer) getGroupUserLevel(groupID, userID string) (int, error) {
 	return opFlag, nil
 }
 
+// KickGroupMember 剔除对应群成员
 func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGroupMemberReq) (*pbGroup.KickGroupMemberResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc args ", req.String())
 	groupInfo, err := rocksCache.GetGroupInfoFromCache(req.GroupID)
@@ -623,7 +628,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 				log.Error(req.OperationID, errMsg)
 				return &pbGroup.KickGroupMemberResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: errMsg}, nil
 			}
-			if opInfo.RoleLevel == constant.GroupOrdinaryUsers {
+			if opInfo.RoleLevel == constant.GroupOrdinaryUsers { // axis 普通成员不能踢出用户
 				errMsg := req.OperationID + " opInfo.RoleLevel == constant.GroupOrdinaryUsers " + opInfo.UserID + opInfo.GroupID
 				log.Error(req.OperationID, errMsg)
 				return &pbGroup.KickGroupMemberResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: errMsg}, nil
@@ -650,7 +655,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 				resp.Id2ResultList = append(resp.Id2ResultList, &pbGroup.Id2Result{UserID: v, Result: -1})
 				continue
 			}
-
+			// axis 管理员不能踢出管理员
 			if kickedInfo.RoleLevel == constant.GroupAdmin && opFlag == 3 {
 				log.Error(req.OperationID, "is constant.GroupAdmin, can't kicked ", v)
 				resp.Id2ResultList = append(resp.Id2ResultList, &pbGroup.Id2Result{UserID: v, Result: -1})
@@ -662,6 +667,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 				continue
 			}
 
+			// TODO: 如果app manager 踢出群主，没有群权转换逻辑，合适吗？还是直接将该群解散？
 			err = imdb.DeleteGroupMemberByGroupIDAndUserID(req.GroupID, v)
 			if err != nil {
 				log.NewError(req.OperationID, "RemoveGroupMember failed ", err.Error(), req.GroupID, v)
@@ -700,6 +706,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 		}
 	} else {
 		okUserIDList = req.KickedUserIDList
+		// axis 如果是超级大群，则在mongoDB中更新对应用户群聊更新表，对应群聊的用户关系表
 		if err := db.DB.RemoverUserFromSuperGroup(req.GroupID, okUserIDList); err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), req.GroupID, req.KickedUserIDList, err.Error())
 			resp.ErrCode = constant.ErrDB.ErrCode
@@ -753,6 +760,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 			}
 		}
 		go func() {
+			// axis 超级大群的人数最高10万，故为了防止阻塞采用异步通知的方式
 			for _, v := range req.KickedUserIDList {
 				chat.SuperGroupNotification(req.OperationID, v, v)
 			}
@@ -802,6 +810,7 @@ func (s *groupServer) GetGroupMembersInfo(ctx context.Context, req *pbGroup.GetG
 	return &resp, nil
 }
 
+// GetGroupApplicationList 获取当前用户所有入群申请列表 axis
 func (s *groupServer) GetGroupApplicationList(_ context.Context, req *pbGroup.GetGroupApplicationListReq) (*pbGroup.GetGroupApplicationListResp, error) {
 	log.NewInfo(req.OperationID, "GetGroupApplicationList args ", req.String())
 	reply, err := imdb.GetGroupApplicationList(req.FromUserID)
@@ -835,7 +844,7 @@ func (s *groupServer) GetGroupApplicationList(_ context.Context, req *pbGroup.Ge
 		log.NewDebug(req.OperationID, "node ", node, "v ", v)
 		resp.GroupRequestList = append(resp.GroupRequestList, &node)
 	}
-	log.NewInfo(req.OperationID, "GetGroupMembersInfo rpc return ", resp)
+	log.NewInfo(req.OperationID, "GetGroupMembersInfo rpc return ", resp.String())
 	return &resp, nil
 }
 
@@ -883,6 +892,7 @@ func (s *groupServer) GroupApplicationResponse(_ context.Context, req *pbGroup.G
 		return &pbGroup.GroupApplicationResponseResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}}, nil
 	}
 
+	// axis 同意入群后的处理逻辑
 	if req.HandleResult == constant.GroupResponseAgree {
 		user, err := imdb.GetUserByUserID(req.FromUserID)
 		if err != nil {
@@ -966,8 +976,8 @@ func (s *groupServer) GroupApplicationResponse(_ context.Context, req *pbGroup.G
 		if err := rocksCache.DelGroupMemberNumFromCache(req.GroupID); err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), err.Error(), req.GroupID)
 		}
-		chat.GroupApplicationAcceptedNotification(req)
-		chat.MemberEnterNotification(req)
+		chat.GroupApplicationAcceptedNotification(req) // axis 对应用户入群申请通过消息通知
+		chat.MemberEnterNotification(req)              // axis 成员成功入群消息通知
 	} else if req.HandleResult == constant.GroupResponseRefuse {
 		chat.GroupApplicationRejectedNotification(req)
 	} else {
@@ -997,6 +1007,7 @@ func (s *groupServer) JoinGroup(ctx context.Context, req *pbGroup.JoinGroupReq) 
 		return &pbGroup.JoinGroupResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrStatus.ErrCode, ErrMsg: errMsg}}, nil
 	}
 
+	// axis 如果验证方式是直接进群，超级大群不支持直接入群
 	if groupInfo.NeedVerification == constant.Directly {
 		if groupInfo.GroupType != constant.SuperGroup {
 			us, err := imdb.GetUserByUserID(req.OpUserID)
@@ -1092,7 +1103,7 @@ func (s *groupServer) QuitGroup(ctx context.Context, req *pbGroup.QuitGroupReq) 
 			return &pbGroup.QuitGroupResp{CommonResp: &pbGroup.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}}, nil
 		}
 
-		err = db.DB.DelGroupMember(req.GroupID, req.OpUserID)
+		err = db.DB.DelGroupMember(req.GroupID, req.OpUserID) // axis the statement do nothing
 		if err != nil {
 			log.NewError(req.OperationID, "DelGroupMember failed ", req.GroupID, req.OpUserID)
 			//	return &pbGroup.CommonResp{ErrorCode: constant.ErrQuitGroup.ErrCode, ErrorMsg: constant.ErrQuitGroup.ErrMsg}, nil
@@ -1128,6 +1139,7 @@ func (s *groupServer) QuitGroup(ctx context.Context, req *pbGroup.QuitGroupReq) 
 		}
 	}
 
+	// axis db中相信变更后，将缓存中的旧信息全部删除掉，要用时在写入缓存，由于rockscache采取的是golang singleflight库，故每次缓存击穿后，都只有一个线程去db读数据
 	etcdConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImCacheName, req.OperationID)
 	if etcdConn == nil {
 		errMsg := req.OperationID + "getcdv3.GetDefaultConn == nil"
@@ -1187,6 +1199,7 @@ func hasAccess(req *pbGroup.SetGroupInfoReq) bool {
 	return false
 }
 
+// SetGroupInfo 设置群聊信息
 func (s *groupServer) SetGroupInfo(ctx context.Context, req *pbGroup.SetGroupInfoReq) (*pbGroup.SetGroupInfoResp, error) {
 	log.NewInfo(req.OperationID, "SetGroupInfo args ", req.String())
 	if !hasAccess(req) {
