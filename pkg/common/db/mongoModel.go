@@ -163,7 +163,8 @@ func (d *DataBases) DelMsgLogic(uid string, seqList []uint32, operationID string
 
 func (d *DataBases) ReplaceMsgByIndex(suffixUserID string, msg *open_im_sdk.MsgData, operationID string, seqIndex int) error {
 	log.NewInfo(operationID, utils.GetSelfFuncName(), suffixUserID, *msg)
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	s := fmt.Sprintf("msg.%d.msg", seqIndex)
 	log.NewDebug(operationID, utils.GetSelfFuncName(), seqIndex, s)
@@ -184,7 +185,8 @@ func (d *DataBases) ReplaceMsgByIndex(suffixUserID string, msg *open_im_sdk.MsgD
 
 func (d *DataBases) ReplaceMsgBySeq(uid string, msg *open_im_sdk.MsgData, operationID string) error {
 	log.NewInfo(operationID, utils.GetSelfFuncName(), uid, *msg)
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	uid = getSeqUid(uid, msg.Seq)
 	seqIndex := getMsgIndex(msg.Seq)
@@ -264,7 +266,8 @@ func (d *DataBases) GetMsgBySeqList(uid string, seqList []uint32, operationID st
 }
 
 func (d *DataBases) GetUserMsgListByIndex(ID string, index int64) (*UserChat, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	regex := fmt.Sprintf("^%s", ID)
 	findOpts := options.Find().SetLimit(1).SetSkip(index).SetSort(bson.M{"uid": 1})
@@ -286,14 +289,16 @@ func (d *DataBases) GetUserMsgListByIndex(ID string, index int64) (*UserChat, er
 }
 
 func (d *DataBases) DelMongoMsgs(IDList []string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	_, err := c.DeleteMany(ctx, bson.M{"uid": bson.M{"$in": IDList}})
 	return err
 }
 
 func (d *DataBases) ReplaceMsgToBlankByIndex(suffixID string, index int) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	userChat := &UserChat{}
 	err := c.FindOne(ctx, bson.M{"uid": suffixID}).Decode(&userChat)
@@ -320,7 +325,8 @@ func (d *DataBases) ReplaceMsgToBlankByIndex(suffixID string, index int) error {
 }
 
 func (d *DataBases) GetNewestMsg(ID string) (msg *MsgInfo, err error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	regex := fmt.Sprintf("^%s", ID)
 	findOpts := options.Find().SetLimit(1).SetSort(bson.M{"uid": -1})
@@ -345,7 +351,8 @@ func (d *DataBases) GetNewestMsg(ID string) (msg *MsgInfo, err error) {
 func (d *DataBases) GetMsgBySeqListMongo2(uid string, seqList []uint32, operationID string) (seqMsg []*open_im_sdk.MsgData, err error) {
 	var hasSeqList []uint32
 	singleCount := 0
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 
 	m := func(uid string, seqList []uint32) map[string][]uint32 {
@@ -396,7 +403,8 @@ func (d *DataBases) GetMsgBySeqListMongo2(uid string, seqList []uint32, operatio
 func (d *DataBases) GetSuperGroupMsgBySeqListMongo(groupID string, seqList []uint32, operationID string) (seqMsg []*open_im_sdk.MsgData, err error) {
 	var hasSeqList []uint32
 	singleCount := 0
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 
 	m := func(uid string, seqList []uint32) map[string][]uint32 {
@@ -446,7 +454,8 @@ func (d *DataBases) GetSuperGroupMsgBySeqListMongo(groupID string, seqList []uin
 }
 
 func (d *DataBases) GetMsgAndIndexBySeqListInOneMongo2(suffixUserID string, seqList []uint32, operationID string) (seqMsg []*open_im_sdk.MsgData, indexList []int, unexistSeqList []uint32, err error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	sChat := UserChat{}
 	if err = c.FindOne(ctx, bson.M{"uid": suffixUserID}).Decode(&sChat); err != nil {
@@ -501,7 +510,8 @@ func genExceptionSuperGroupMessageBySeqList(seqList []uint32, groupID string) (e
 }
 
 func (d *DataBases) SaveUserChatMongo2(uid string, sendTime int64, m *pbMsg.MsgDataToDB) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	newTime := getCurrentTimestampByMill()
 	operationID := ""
@@ -630,7 +640,8 @@ func (d *DataBases) DelUserChat(uid string) error {
 }
 
 func (d *DataBases) DelUserChatMongo2(uid string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	filter := bson.M{"uid": uid}
 
@@ -910,7 +921,8 @@ type Comment struct {
 }
 
 func (d *DataBases) CreateOneWorkMoment(workMoment *WorkMoment) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	workMomentID := generateWorkMomentID(workMoment.UserID)
 	workMoment.WorkMomentID = workMomentID
@@ -920,14 +932,16 @@ func (d *DataBases) CreateOneWorkMoment(workMoment *WorkMoment) error {
 }
 
 func (d *DataBases) DeleteOneWorkMoment(workMomentID string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	_, err := c.DeleteOne(ctx, bson.M{"work_moment_id": workMomentID})
 	return err
 }
 
 func (d *DataBases) DeleteComment(workMomentID, contentID, opUserID string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	_, err := c.UpdateOne(ctx, bson.D{{Key: "work_moment_id", Value: workMomentID},
 		{Key: "$or", Value: bson.A{
@@ -939,7 +953,8 @@ func (d *DataBases) DeleteComment(workMomentID, contentID, opUserID string) erro
 }
 
 func (d *DataBases) GetWorkMomentByID(workMomentID string) (*WorkMoment, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	workMoment := &WorkMoment{}
 	err := c.FindOne(ctx, bson.M{"work_moment_id": workMomentID}).Decode(workMoment)
@@ -952,6 +967,7 @@ func (d *DataBases) LikeOneWorkMoment(likeUserID, userName, workMomentID string)
 		return nil, false, err
 	}
 	var isAlreadyLike bool
+	// axis 点赞后再次点赞等价于取消点赞
 	for i, user := range workMoment.LikeUserList {
 		if likeUserID == user.UserID {
 			isAlreadyLike = true
@@ -962,7 +978,8 @@ func (d *DataBases) LikeOneWorkMoment(likeUserID, userName, workMomentID string)
 		workMoment.LikeUserList = append(workMoment.LikeUserList, &WorkMomentUser{UserID: likeUserID, UserName: userName})
 	}
 	log.NewDebug("", utils.GetSelfFuncName(), workMoment)
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	_, err = c.UpdateOne(ctx, bson.M{"work_moment_id": workMomentID}, bson.M{"$set": bson.M{"like_user_list": workMoment.LikeUserList}})
 	return workMoment, !isAlreadyLike, err
@@ -974,7 +991,8 @@ func (d *DataBases) SetUserWorkMomentsLevel(userID string, level int32) error {
 
 func (d *DataBases) CommentOneWorkMoment(comment *Comment, workMomentID string) (WorkMoment, error) {
 	comment.ContentID = generateWorkMomentCommentID(workMomentID)
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	var workMoment WorkMoment
 	err := c.FindOneAndUpdate(ctx, bson.M{"work_moment_id": workMomentID}, bson.M{"$push": bson.M{"comments": comment}}).Decode(&workMoment)
@@ -982,7 +1000,8 @@ func (d *DataBases) CommentOneWorkMoment(comment *Comment, workMomentID string) 
 }
 
 func (d *DataBases) GetUserSelfWorkMoments(userID string, showNumber, pageNumber int32) ([]WorkMoment, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	var workMomentList []WorkMoment
 	findOpts := options.Find().SetLimit(int64(showNumber)).SetSkip(int64(showNumber) * (int64(pageNumber) - 1)).SetSort(bson.M{"create_time": -1})
@@ -995,15 +1014,17 @@ func (d *DataBases) GetUserSelfWorkMoments(userID string, showNumber, pageNumber
 }
 
 func (d *DataBases) GetUserWorkMoments(opUserID, userID string, showNumber, pageNumber int32, friendIDList []string) ([]WorkMoment, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	// TODO: friendIDList 这个参数根本没有用，莫名其妙 axis
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	var workMomentList []WorkMoment
 	findOpts := options.Find().SetLimit(int64(showNumber)).SetSkip(int64(showNumber) * (int64(pageNumber) - 1)).SetSort(bson.M{"create_time": -1})
 	result, err := c.Find(ctx, bson.D{ // 等价条件: select * from
 		{Key: "user_id", Value: userID},
 		{Key: "$or", Value: bson.A{
-			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCantSee}, {Key: "permission_user_id_list", Value: bson.D{{"$nin", bson.A{opUserID}}}}},
-			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCanSee}, {Key: "permission_user_id_list", Value: bson.D{{"$in", bson.A{opUserID}}}}},
+			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCantSee}, {Key: "permission_user_id_list", Value: bson.D{{Key: "$nin", Value: bson.A{opUserID}}}}},
+			bson.D{{Key: "permission", Value: constant.WorkMomentPermissionCanSee}, {Key: "permission_user_id_list", Value: bson.D{{Key: "$in", Value: bson.A{opUserID}}}}},
 			bson.D{{Key: "permission", Value: constant.WorkMomentPublic}},
 		}},
 	}, findOpts)
@@ -1015,7 +1036,8 @@ func (d *DataBases) GetUserWorkMoments(opUserID, userID string, showNumber, page
 }
 
 func (d *DataBases) GetUserFriendWorkMoments(showNumber, pageNumber int32, userID string, friendIDList []string) ([]WorkMoment, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cWorkMoment)
 	var workMomentList []WorkMoment
 	findOpts := options.Find().SetLimit(int64(showNumber)).SetSkip(int64(showNumber) * (int64(pageNumber) - 1)).SetSort(bson.M{"create_time": -1})
@@ -1110,7 +1132,8 @@ func (d *DataBases) CreateSuperGroup(groupID string, initMemberIDList []string, 
 }
 
 func (d *DataBases) GetSuperGroup(groupID string) (SuperGroup, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSuperGroup)
 	superGroup := SuperGroup{}
 	err := c.FindOne(ctx, bson.M{"group_id": groupID}).Decode(&superGroup)
@@ -1182,7 +1205,8 @@ func (d *DataBases) RemoverUserFromSuperGroup(groupID string, userIDList []strin
 }
 
 func (d *DataBases) GetSuperGroupByUserID(userID string) (UserToSuperGroup, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cUserToSuperGroup)
 	var user UserToSuperGroup
 	_ = c.FindOne(ctx, bson.M{"user_id": userID}).Decode(&user)
@@ -1190,7 +1214,8 @@ func (d *DataBases) GetSuperGroupByUserID(userID string) (UserToSuperGroup, erro
 }
 
 func (d *DataBases) DeleteSuperGroup(groupID string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancle()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cSuperGroup)
 	session, err := d.mongoClient.StartSession()
 	if err != nil {

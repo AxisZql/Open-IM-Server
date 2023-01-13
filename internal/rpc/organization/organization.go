@@ -98,6 +98,7 @@ func (s *organizationServer) Run() {
 	log.NewInfo("", "organization rpc success")
 }
 
+// CreateDepartment 创建部门，每一个部门关联一个群 axis
 func (s *organizationServer) CreateDepartment(ctx context.Context, req *rpc.CreateDepartmentReq) (*rpc.CreateDepartmentResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc args ", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) {
@@ -126,7 +127,7 @@ func (s *organizationServer) CreateDepartment(ctx context.Context, req *rpc.Crea
 	log.Debug(req.OperationID, "GetDepartment ", department.DepartmentID, *createdDepartment)
 	resp := &rpc.CreateDepartmentResp{DepartmentInfo: &open_im_sdk.Department{}}
 	utils.CopyStructFields(resp.DepartmentInfo, createdDepartment)
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	if err := rocksCache.DelAllDepartmentsFromCache(); err != nil {
 		errMsg := req.OperationID + " " + "UpdateDepartment failed " + err.Error()
 		log.Error(req.OperationID, errMsg)
@@ -142,6 +143,7 @@ func (s *organizationServer) CreateDepartment(ctx context.Context, req *rpc.Crea
 		return resp, nil
 	}
 	client := groupRpc.NewGroupClient(etcdConn)
+	// axis 部门的实质就是个群？
 	createGroupReq := &groupRpc.CreateGroupReq{
 		InitMemberList: []*groupRpc.GroupAddMemberInfo{},
 		GroupInfo: &open_im_sdk.GroupInfo{
@@ -198,15 +200,17 @@ func (s *organizationServer) UpdateDepartment(ctx context.Context, req *rpc.Upda
 		return &rpc.UpdateDepartmentResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: errMsg}, nil
 	}
 	resp := &rpc.UpdateDepartmentResp{}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	chat.OrganizationNotificationToAll(req.OpUserID, req.OperationID)
 	return resp, nil
 }
 
+// GetSubDepartment 获取子部门 axis
 func (s *organizationServer) GetSubDepartment(ctx context.Context, req *rpc.GetSubDepartmentReq) (*rpc.GetSubDepartmentResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc args ", req.String())
 	var departmentList []db.Department
 	var err error
+	// axis -1 表示获取全部部门
 	if req.DepartmentID == "-1" {
 		departmentList, err = rocksCache.GetAllDepartmentsFromCache()
 		if err != nil {
@@ -241,7 +245,7 @@ func (s *organizationServer) GetSubDepartment(ctx context.Context, req *rpc.GetS
 		}
 		resp.DepartmentList = append(resp.DepartmentList, &v1)
 	}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	return resp, nil
 }
 
@@ -275,6 +279,7 @@ func (s *organizationServer) CreateOrganizationUser(ctx context.Context, req *rp
 	authReq := &pbAuth.UserRegisterReq{UserInfo: &open_im_sdk.UserInfo{}}
 	utils.CopyStructFields(authReq.UserInfo, req.OrganizationUser)
 	authReq.OperationID = req.OperationID
+	// 创建组织用户，类似企业微信，可以在对应用户未加入企业微信前就创建对应用户 axis
 	if req.IsRegister {
 		etcdConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImAuthName, req.OperationID)
 		if etcdConn == nil {
@@ -295,6 +300,7 @@ func (s *organizationServer) CreateOrganizationUser(ctx context.Context, req *rp
 			return &rpc.CreateOrganizationUserResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: errMsg}, nil
 		}
 	}
+	// TODO: 妈的，写的什么jb，这里不是应该放在前面？ axis
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc args ", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) {
 		errMsg := req.OperationID + " " + req.OpUserID + " is not app manager"
@@ -313,7 +319,7 @@ func (s *organizationServer) CreateOrganizationUser(ctx context.Context, req *rp
 	}
 	log.Debug(req.OperationID, "CreateOrganizationUser ", organizationUser)
 	resp := &rpc.CreateOrganizationUserResp{}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	//chat.OrganizationNotificationToAll(req.OpUserID, req.OperationID)
 	return resp, nil
 }
@@ -375,7 +381,7 @@ func (s *organizationServer) CreateDepartmentMember(ctx context.Context, req *rp
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), err.Error())
 	}
 	resp := &rpc.CreateDepartmentMemberResp{}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	chat.OrganizationNotificationToAll(req.OpUserID, req.OperationID)
 	return resp, nil
 }
@@ -428,7 +434,7 @@ func (s *organizationServer) GetUserInDepartment(ctx context.Context, req *rpc.G
 	resp := rpc.GetUserInDepartmentResp{UserInDepartment: &open_im_sdk.UserInDepartment{OrganizationUser: &open_im_sdk.OrganizationUser{}}}
 	resp.UserInDepartment.DepartmentMemberList = r.DepartmentMemberList
 	resp.UserInDepartment.OrganizationUser = r.OrganizationUser
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", resp.String())
 	return &resp, nil
 }
 
@@ -449,7 +455,7 @@ func (s *organizationServer) UpdateUserInDepartment(ctx context.Context, req *rp
 		return &rpc.UpdateUserInDepartmentResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: errMsg}, nil
 	}
 	resp := &rpc.UpdateUserInDepartmentResp{}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	chat.OrganizationNotificationToAll(req.OpUserID, req.OperationID)
 	return resp, nil
 }
@@ -470,7 +476,7 @@ func (s *organizationServer) DeleteUserInDepartment(ctx context.Context, req *rp
 	}
 	log.Debug(req.OperationID, "DeleteUserInDepartment success ", req.DepartmentID, req.UserID)
 	resp := &rpc.DeleteUserInDepartmentResp{}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	chat.OrganizationNotificationToAll(req.OpUserID, req.OperationID)
 	return resp, nil
 }
@@ -490,7 +496,7 @@ func (s *organizationServer) DeleteOrganizationUser(ctx context.Context, req *rp
 	}
 	log.Debug(req.OperationID, "DeleteOrganizationUser success ", req.UserID)
 	resp := &rpc.DeleteOrganizationUserResp{}
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", *resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", (*resp).String())
 	chat.OrganizationNotificationToAll(req.OpUserID, req.OperationID)
 	return resp, nil
 }
@@ -534,7 +540,7 @@ func (s *organizationServer) GetDepartmentMember(ctx context.Context, req *rpc.G
 		resp.UserDepartmentMemberList = append(resp.UserDepartmentMemberList, &userDepartmentMember)
 	}
 
-	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", resp)
+	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc return ", resp.String())
 	return &resp, nil
 }
 

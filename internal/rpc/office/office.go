@@ -399,9 +399,9 @@ func (s *officeServer) CreateOneWorkMoment(_ context.Context, req *pbOffice.Crea
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbOffice.CreateOneWorkMomentResp{CommonResp: &pbOffice.CommonResp{}}
 	workMoment := db.WorkMoment{
-		Comments:           []*db.Comment{},
-		LikeUserList:       []*db.WorkMomentUser{},
-		PermissionUserList: []*db.WorkMomentUser{},
+		Comments:           []*db.Comment{},        // axis 朋友圈评论
+		LikeUserList:       []*db.WorkMomentUser{}, // axis 点赞用户
+		PermissionUserList: []*db.WorkMomentUser{}, // axis 可见范围内的用户
 	}
 	createUser, err := imdb.GetUserByUserID(req.WorkMoment.UserID)
 	if err != nil {
@@ -435,7 +435,7 @@ func (s *officeServer) CreateOneWorkMoment(_ context.Context, req *pbOffice.Crea
 		return resp, nil
 	}
 
-	// send notification to at users
+	// send notification to at users // axis 这条朋友圈要@的人
 	for _, atUser := range req.WorkMoment.AtUserList {
 		workMomentNotificationMsg := &pbOffice.WorkMomentNotificationMsg{
 			NotificationMsgType: constant.WorkMomentAtUserNotification,
@@ -519,9 +519,9 @@ func isUserCanSeeWorkMoment(userID string, workMoment db.WorkMoment) bool {
 			return true
 		case constant.WorkMomentPrivate:
 			return false
-		case constant.WorkMomentPermissionCanSee:
+		case constant.WorkMomentPermissionCanSee: // axis 可以看的用户
 			return utils.IsContain(userID, workMoment.PermissionUserIDList)
-		case constant.WorkMomentPermissionCantSee:
+		case constant.WorkMomentPermissionCantSee: // axis 类似微信的不让他看功能
 			return !utils.IsContain(userID, workMoment.PermissionUserIDList)
 		}
 		return false
@@ -553,7 +553,7 @@ func (s *officeServer) LikeOneWorkMoment(_ context.Context, req *pbOffice.LikeOn
 		UserName:            user.Nickname,
 		CreateTime:          int32(time.Now().Unix()),
 	}
-	// send notification
+	// send notification，axis 给发送该条朋友圈的人发去点赞通知
 	if like && workMoment.UserID != req.UserID {
 		msg.WorkMomentSendNotification(req.OperationID, workMoment.UserID, workMomentNotificationMsg)
 	}
@@ -579,6 +579,7 @@ func (s *officeServer) CommentOneWorkMoment(_ context.Context, req *pbOffice.Com
 			return resp, nil
 		}
 	}
+	// axis 类似微信，朋友圈评论不像博客评论那样递归盖楼
 	comment := &db.Comment{
 		UserID:        req.UserID,
 		UserName:      commentUser.Nickname,
@@ -611,6 +612,7 @@ func (s *officeServer) CommentOneWorkMoment(_ context.Context, req *pbOffice.Com
 		msg.WorkMomentSendNotification(req.OperationID, workMoment.UserID, workMomentNotificationMsg)
 	}
 	if req.ReplyUserID != "" && req.ReplyUserID != workMoment.UserID && req.ReplyUserID != req.UserID {
+		// axis 被回复方接收评论消息通知
 		msg.WorkMomentSendNotification(req.OperationID, req.ReplyUserID, workMomentNotificationMsg)
 	}
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "resp: ", resp.String())
@@ -649,20 +651,24 @@ func (s *officeServer) GetWorkMomentByID(_ context.Context, req *pbOffice.GetWor
 	return resp, nil
 }
 
+// GetUserWorkMoments 分页获取对应用户的全部朋友圈，相当于微信的个人朋友圈空间功能 axis
 func (s *officeServer) GetUserWorkMoments(_ context.Context, req *pbOffice.GetUserWorkMomentsReq) (resp *pbOffice.GetUserWorkMomentsResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbOffice.GetUserWorkMomentsResp{CommonResp: &pbOffice.CommonResp{}, WorkMoments: []*pbOffice.WorkMoment{}}
 	resp.Pagination = &pbCommon.ResponsePagination{CurrentPage: req.Pagination.PageNumber, ShowNumber: req.Pagination.ShowNumber}
 	var workMoments []db.WorkMoment
 	if req.UserID == req.OpUserID {
+		// axis 获取自己的全部朋友圈记录
 		workMoments, err = db.DB.GetUserSelfWorkMoments(req.UserID, req.Pagination.ShowNumber, req.Pagination.PageNumber)
 	} else {
+		// TODO: 这步完全没有任何作用 axis
 		friendIDList, err := rocksCache.GetFriendIDListFromCache(req.UserID)
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUserFriendWorkMoments", err.Error())
 			resp.CommonResp = &pbOffice.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: err.Error()}
 			return resp, nil
 		}
+		// axis 根据可见范围将对应用户的朋友圈展示给当前查询的用户
 		workMoments, err = db.DB.GetUserWorkMoments(req.OpUserID, req.UserID, req.Pagination.ShowNumber, req.Pagination.PageNumber, friendIDList)
 	}
 	if err != nil {
@@ -692,6 +698,7 @@ func (s *officeServer) GetUserFriendWorkMoments(_ context.Context, req *pbOffice
 	resp = &pbOffice.GetUserFriendWorkMomentsResp{CommonResp: &pbOffice.CommonResp{}, WorkMoments: []*pbOffice.WorkMoment{}}
 	resp.Pagination = &pbCommon.ResponsePagination{CurrentPage: req.Pagination.PageNumber, ShowNumber: req.Pagination.ShowNumber}
 	var friendIDList []string
+	// axis 朋友圈只能朋友查看
 	if config.Config.WorkMoment.OnlyFriendCanSee {
 		friendIDList, err = rocksCache.GetFriendIDListFromCache(req.UserID)
 		if err != nil {
@@ -726,6 +733,7 @@ func (s *officeServer) GetUserFriendWorkMoments(_ context.Context, req *pbOffice
 func (s *officeServer) SetUserWorkMomentsLevel(_ context.Context, req *pbOffice.SetUserWorkMomentsLevelReq) (resp *pbOffice.SetUserWorkMomentsLevelResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbOffice.SetUserWorkMomentsLevelResp{CommonResp: &pbOffice.CommonResp{}}
+	// TODO: need to add some logic [axis]
 	if err := db.DB.SetUserWorkMomentsLevel(req.UserID, req.Level); err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), "SetUserWorkMomentsLevel failed", err.Error())
 		resp.CommonResp = &pbOffice.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}
