@@ -360,6 +360,7 @@ func (s *organizationServer) CreateDepartmentMember(ctx context.Context, req *rp
 		return &rpc.CreateDepartmentMemberResp{ErrCode: constant.ErrAccess.ErrCode, ErrMsg: errMsg}, nil
 	}
 
+	// TODO: axis 什么玩意，userID在DepartmentMember表中是主键，这个if语句先放在这里是什么玩意
 	err, _ := imdb.GetOrganizationUser(req.DepartmentMember.UserID)
 	if err != nil {
 		errMsg := req.OperationID + " " + req.DepartmentMember.UserID + " is not exist"
@@ -481,6 +482,7 @@ func (s *organizationServer) DeleteUserInDepartment(ctx context.Context, req *rp
 	return resp, nil
 }
 
+// DeleteOrganizationUser 类似企业微信一个用户可以加入多个Organization，一个Organization下面管理着多个Department【axis】
 func (s *organizationServer) DeleteOrganizationUser(ctx context.Context, req *rpc.DeleteOrganizationUserReq) (*rpc.DeleteOrganizationUserResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), " rpc args ", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) {
@@ -506,6 +508,7 @@ func (s *organizationServer) GetDepartmentMember(ctx context.Context, req *rpc.G
 	var departmentMemberList []db.DepartmentMember
 	var err error
 	if req.DepartmentID == "-1" {
+		// axis 获取全部部门的成员
 		departmentMemberList, err = rocksCache.GetAllDepartmentMembersFromCache()
 		if err != nil {
 			errMsg := req.OperationID + " " + req.OpUserID + " is not app manager"

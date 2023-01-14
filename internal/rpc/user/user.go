@@ -145,10 +145,11 @@ func (s *userServer) GetUserInfo(ctx context.Context, req *pbUser.GetUserInfoReq
 	return &pbUser.GetUserInfoResp{CommonResp: &pbUser.CommonResp{}, UserInfoList: userInfoList}, nil
 }
 
+// BatchSetConversations 批量设置用户的会话状态 axis
 func (s *userServer) BatchSetConversations(ctx context.Context, req *pbUser.BatchSetConversationsReq) (*pbUser.BatchSetConversationsResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	if req.NotificationType == 0 {
-		req.NotificationType = constant.ConversationOptChangeNotification
+		req.NotificationType = constant.ConversationOptChangeNotification // axis 对话选择更改通知
 	}
 	resp := &pbUser.BatchSetConversationsResp{}
 	for _, v := range req.Conversations {
@@ -156,22 +157,24 @@ func (s *userServer) BatchSetConversations(ctx context.Context, req *pbUser.Batc
 		if err := utils.CopyStructFields(&conversation, v); err != nil {
 			log.NewDebug(req.OperationID, utils.GetSelfFuncName(), v.String(), "CopyStructFields failed", err.Error())
 		}
-		//redis op
+		//redis op  【axis】设置单聊会话消息接收选项
 		if err := db.DB.SetSingleConversationRecvMsgOpt(req.OwnerUserID, v.ConversationID, v.RecvMsgOpt); err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "cache failed, rpc return", err.Error())
 			resp.CommonResp = &pbUser.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}
 			return resp, nil
 		}
 
-		isUpdate, err := imdb.SetConversation(conversation)
+		isUpdate, err := imdb.SetConversation(conversation) // 更新或者创建对应的用户的对应会话状态
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "SetConversation error", err.Error())
 			resp.Failed = append(resp.Failed, v.ConversationID)
 			continue
 		}
 		if isUpdate {
+			// 如果是更新，只删除对应会话在缓存中的数据即可 axis
 			err = rocksCache.DelConversationFromCache(v.OwnerUserID, v.ConversationID)
 		} else {
+			// 如果是创建，则要删除缓存中对应的会话列表信息 axis
 			err = rocksCache.DelUserConversationIDListFromCache(v.OwnerUserID)
 		}
 		if err != nil {
@@ -249,6 +252,7 @@ func (s *userServer) SetConversation(ctx context.Context, req *pbUser.SetConvers
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp := &pbUser.SetConversationResp{}
 	if req.NotificationType == 0 {
+		// axis 设置会话时选择的通知类型
 		req.NotificationType = constant.ConversationOptChangeNotification
 	}
 	if req.Conversation.ConversationType == constant.GroupChatType {
@@ -281,8 +285,10 @@ func (s *userServer) SetConversation(ctx context.Context, req *pbUser.SetConvers
 		return resp, nil
 	}
 	if isUpdate {
+		// axis 如果是更新则删除的是对应更新会话的缓存
 		err = rocksCache.DelConversationFromCache(req.Conversation.OwnerUserID, req.Conversation.ConversationID)
 	} else {
+		// axis 如果是新建则删除的是记录全部会话信息的缓存
 		err = rocksCache.DelUserConversationIDListFromCache(req.Conversation.OwnerUserID)
 	}
 	if err != nil {
@@ -310,7 +316,7 @@ func (s *userServer) SetRecvMsgOpt(ctx context.Context, req *pbUser.SetRecvMsgOp
 	resp := &pbUser.SetRecvMsgOptResp{}
 	var conversation db.Conversation
 	if err := utils.CopyStructFields(&conversation, req); err != nil {
-		log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "CopyStructFields failed", *req, err.Error())
+		log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "CopyStructFields failed", (*req).String(), err.Error())
 	}
 	if err := db.DB.SetSingleConversationRecvMsgOpt(req.OwnerUserID, req.ConversationID, req.RecvMsgOpt); err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), "cache failed, rpc return", err.Error())
@@ -364,6 +370,7 @@ func (s *userServer) GetAllUserID(_ context.Context, req *pbUser.GetAllUserIDReq
 	}
 }
 
+// AccountCheck 通过提交的用户id检查对应id是不是已经创建的有效用户 axis
 func (s *userServer) AccountCheck(_ context.Context, req *pbUser.AccountCheckReq) (*pbUser.AccountCheckResp, error) {
 	log.NewInfo(req.OperationID, "AccountCheck args ", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) {
@@ -442,6 +449,7 @@ func (s *userServer) UpdateUserInfo(ctx context.Context, req *pbUser.UpdateUserI
 		log.NewError(req.OperationID, "GetFriendList failed ", err.Error(), newReq)
 		return &pbUser.UpdateUserInfoResp{CommonResp: &pbUser.CommonResp{ErrCode: 500, ErrMsg: err.Error()}}, nil
 	}
+	// axis 通知信息更改用户的全部好友
 	for _, v := range rpcResp.FriendInfoList {
 		log.Info(req.OperationID, "UserInfoUpdatedNotification ", req.UserInfo.UserID, v.FriendUser.UserID)
 		chat.UserInfoUpdatedNotification(req.OperationID, req.UserInfo.UserID, v.FriendUser.UserID)
@@ -450,16 +458,19 @@ func (s *userServer) UpdateUserInfo(ctx context.Context, req *pbUser.UpdateUserI
 		log.NewError(req.OperationID, "GetFriendList failed ", err.Error(), newReq)
 		return &pbUser.UpdateUserInfoResp{CommonResp: &pbUser.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: err.Error()}}, nil
 	}
-	chat.UserInfoUpdatedNotification(req.OperationID, req.UserInfo.UserID, req.OpUserID)
+	chat.UserInfoUpdatedNotification(req.OperationID, req.UserInfo.UserID, req.OpUserID) // axis 向修改操作的发起用户也发送通知消息
 	log.Info(req.OperationID, "UserInfoUpdatedNotification ", req.UserInfo.UserID, req.OpUserID)
 	if req.UserInfo.FaceURL != "" {
 		s.SyncJoinedGroupMemberFaceURL(req.UserInfo.UserID, req.UserInfo.FaceURL, req.OperationID, req.OpUserID)
 	}
 	if req.UserInfo.Nickname != "" {
+		// axis 和更新头像的处理逻辑一致
 		s.SyncJoinedGroupMemberNickname(req.UserInfo.UserID, req.UserInfo.Nickname, oldNickname, req.OperationID, req.OpUserID)
 	}
 	return &pbUser.UpdateUserInfoResp{CommonResp: &pbUser.CommonResp{}}, nil
 }
+
+// SetGlobalRecvMessageOpt 设置全局消息接收选项 axis
 func (s *userServer) SetGlobalRecvMessageOpt(ctx context.Context, req *pbUser.SetGlobalRecvMessageOptReq) (*pbUser.SetGlobalRecvMessageOptResp, error) {
 	log.NewInfo(req.OperationID, "SetGlobalRecvMessageOpt args ", req.String())
 
@@ -487,6 +498,7 @@ func (s *userServer) SetGlobalRecvMessageOpt(ctx context.Context, req *pbUser.Se
 	return &pbUser.SetGlobalRecvMessageOptResp{CommonResp: &pbUser.CommonResp{}}, nil
 }
 
+// SyncJoinedGroupMemberFaceURL 用户修改头像后，删除群聊中原有的成员用户头像缓存，以便可以在群聊中准确显示该用户的当前头像 axis
 func (s *userServer) SyncJoinedGroupMemberFaceURL(userID string, faceURL string, operationID string, opUserID string) {
 	joinedGroupIDList, err := rocksCache.GetJoinedGroupIDListFromCache(userID)
 	if err != nil {
@@ -547,6 +559,7 @@ func (s *userServer) GetUsers(ctx context.Context, req *pbUser.GetUsersReq) (*pb
 	var err error
 	resp := &pbUser.GetUsersResp{CommonResp: &pbUser.CommonResp{}, Pagination: &sdkws.ResponsePagination{CurrentPage: req.Pagination.PageNumber, ShowNumber: req.Pagination.ShowNumber}}
 	if req.UserID != "" {
+		// axis 根据ID精确查询用户
 		userDB, err := imdb.GetUserByUserID(req.UserID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -560,6 +573,7 @@ func (s *userServer) GetUsers(ctx context.Context, req *pbUser.GetUsersReq) (*pb
 		usersDB = append(usersDB, *userDB)
 		resp.TotalNums = 1
 	} else if req.UserName != "" {
+		// axis 根据用户名模糊查询用户
 		usersDB, err = imdb.GetUserByName(req.UserName, req.Pagination.ShowNumber, req.Pagination.PageNumber)
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), req.UserName, req.Pagination.ShowNumber, req.Pagination.PageNumber, err.Error())
@@ -577,6 +591,7 @@ func (s *userServer) GetUsers(ctx context.Context, req *pbUser.GetUsersReq) (*pb
 
 	} else if req.Content != "" {
 		var count int64
+		// axis 一次性支持用户名模糊查询和用户ID精确查询
 		usersDB, count, err = imdb.GetUsersByNameAndID(req.Content, req.Pagination.ShowNumber, req.Pagination.PageNumber)
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUsers failed", req.Pagination.ShowNumber, req.Pagination.PageNumber, err.Error())
@@ -586,6 +601,7 @@ func (s *userServer) GetUsers(ctx context.Context, req *pbUser.GetUsersReq) (*pb
 		}
 		resp.TotalNums = int32(count)
 	} else {
+		// axis TODO: 无条件获取用户列表？
 		usersDB, err = imdb.GetUsers(req.Pagination.ShowNumber, req.Pagination.PageNumber)
 		if err != nil {
 			log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUsers failed", req.Pagination.ShowNumber, req.Pagination.PageNumber, err.Error())
@@ -630,6 +646,7 @@ func (s *userServer) GetUsers(ctx context.Context, req *pbUser.GetUsersReq) (*pb
 	return resp, nil
 }
 
+// AddUser 创建用户 axis
 func (s *userServer) AddUser(ctx context.Context, req *pbUser.AddUserReq) (*pbUser.AddUserResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp := &pbUser.AddUserResp{CommonResp: &pbUser.CommonResp{}}
@@ -643,6 +660,7 @@ func (s *userServer) AddUser(ctx context.Context, req *pbUser.AddUserReq) (*pbUs
 	return resp, nil
 }
 
+// BlockUser 将对应用户于一段时间内添加入黑名单 axis
 func (s *userServer) BlockUser(ctx context.Context, req *pbUser.BlockUserReq) (*pbUser.BlockUserResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp := &pbUser.BlockUserResp{CommonResp: &pbUser.CommonResp{}}
@@ -657,6 +675,7 @@ func (s *userServer) BlockUser(ctx context.Context, req *pbUser.BlockUserReq) (*
 	return resp, nil
 }
 
+// UnBlockUser 将用户从黑名单中解除 axis
 func (s *userServer) UnBlockUser(ctx context.Context, req *pbUser.UnBlockUserReq) (*pbUser.UnBlockUserResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp := &pbUser.UnBlockUserResp{CommonResp: &pbUser.CommonResp{}}
@@ -671,6 +690,7 @@ func (s *userServer) UnBlockUser(ctx context.Context, req *pbUser.UnBlockUserReq
 	return resp, nil
 }
 
+// GetBlockUsers 获取指定用户的ID黑名单用户或者分页获取所有黑名单用户 axis
 func (s *userServer) GetBlockUsers(ctx context.Context, req *pbUser.GetBlockUsersReq) (resp *pbUser.GetBlockUsersResp, err error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req: ", req.String())
 	resp = &pbUser.GetBlockUsersResp{CommonResp: &pbUser.CommonResp{}, Pagination: &sdkws.ResponsePagination{ShowNumber: req.Pagination.ShowNumber, CurrentPage: req.Pagination.PageNumber}}
