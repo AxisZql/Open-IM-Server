@@ -70,7 +70,7 @@ const (
 	UserNotificationBegin       = 1301
 	UserInfoUpdatedNotification = 1303 //SetSelfInfoTip             = 204
 	UserNotificationEnd         = 1399
-	OANotification              = 1400
+	OANotification              = 1400 // OA【office automatic】系统相关通知 axis
 
 	GroupNotificationBegin = 1500
 
