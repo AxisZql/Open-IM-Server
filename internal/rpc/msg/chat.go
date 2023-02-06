@@ -10,7 +10,7 @@ import (
 	"context"
 )
 
-func (rpc *rpcChat) ClearMsg(_ context.Context, req *pbChat.ClearMsgReq) (*pbChat.ClearMsgResp, error) {
+func (rpc *RpcChat) ClearMsg(_ context.Context, req *pbChat.ClearMsgReq) (*pbChat.ClearMsgResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "rpc req: ", req.String())
 	if req.OpUserID != req.UserID && !token_verify.IsManagerUserID(req.UserID) {
 		errMsg := "No permission" + req.OpUserID + req.UserID
@@ -37,7 +37,7 @@ func (rpc *rpcChat) ClearMsg(_ context.Context, req *pbChat.ClearMsgReq) (*pbCha
 	return &resp, nil
 }
 
-func (rpc *rpcChat) SetMsgMinSeq(_ context.Context, req *pbChat.SetMsgMinSeqReq) (*pbChat.SetMsgMinSeqResp, error) {
+func (rpc *RpcChat) SetMsgMinSeq(_ context.Context, req *pbChat.SetMsgMinSeqReq) (*pbChat.SetMsgMinSeqResp, error) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "rpc req: ", req.String())
 	if req.OpUserID != req.UserID && !token_verify.IsManagerUserID(req.UserID) {
 		errMsg := "No permission" + req.OpUserID + req.UserID

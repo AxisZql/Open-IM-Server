@@ -13,7 +13,7 @@ import (
 	promePkg "Open_IM/pkg/common/prometheus"
 )
 
-func (rpc *rpcChat) GetMaxAndMinSeq(_ context.Context, in *open_im_sdk.GetMaxAndMinSeqReq) (*open_im_sdk.GetMaxAndMinSeqResp, error) {
+func (rpc *RpcChat) GetMaxAndMinSeq(_ context.Context, in *open_im_sdk.GetMaxAndMinSeqReq) (*open_im_sdk.GetMaxAndMinSeqResp, error) {
 	log.NewInfo(in.OperationID, "rpc getMaxAndMinSeq is arriving", in.String())
 	resp := new(open_im_sdk.GetMaxAndMinSeqResp)
 	m := make(map[string]*open_im_sdk.MaxAndMinSeq)
@@ -48,7 +48,7 @@ func (rpc *rpcChat) GetMaxAndMinSeq(_ context.Context, in *open_im_sdk.GetMaxAnd
 }
 
 // PullMessageBySeqList 通过消息seq拉取
-func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.PullMessageBySeqListReq) (*open_im_sdk.PullMessageBySeqListResp, error) {
+func (rpc *RpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.PullMessageBySeqListReq) (*open_im_sdk.PullMessageBySeqListResp, error) {
 	log.NewInfo(in.OperationID, "rpc PullMessageBySeqList is arriving", in.String())
 	resp := new(open_im_sdk.PullMessageBySeqListResp)
 	m := make(map[string]*open_im_sdk.MsgDataList)
@@ -60,7 +60,7 @@ func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.Pull
 		} else {
 			log.Debug(in.OperationID, "get message from redis is nil", failedSeqList)
 		}
-		// aixs 根据从redis中获取失败的消息的seq号，到mongodb中获取
+		// axis 根据从redis中获取失败的消息的seq号，到mongodb中获取
 		msgList, err1 := commonDB.DB.GetMsgBySeqListMongo2(in.UserID, failedSeqList, in.OperationID)
 		if err1 != nil {
 			promePkg.PromeAdd(promePkg.MsgPullFromMongoFailedCounter, len(failedSeqList))
@@ -98,6 +98,7 @@ func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.Pull
 				return resp, nil
 			} else {
 				promePkg.PromeAdd(promePkg.MsgPullFromMongoSuccessCounter, len(msgList))
+				promePkg.PromeAdd(promePkg.MsgPullFromRedisSuccessCounter, len(redisMsgList))
 				redisMsgList = append(redisMsgList, msgList...)
 				x.MsgDataList = redisMsgList
 				m[k] = x
@@ -112,19 +113,20 @@ func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.Pull
 	return resp, nil
 }
 
+// TODO: 这里要使用堆排序做啥？ axis
 type MsgFormats []*open_im_sdk.MsgData
 
-// Implement the sort.Interface interface to get the number of elements method
+// Len Implement the sort.Interface to get the number of elements method
 func (s MsgFormats) Len() int {
 	return len(s)
 }
 
-// Implement the sort.Interface interface comparison element method
+// Less Implement the sort.Interface interface comparison element method
 func (s MsgFormats) Less(i, j int) bool {
 	return s[i].SendTime < s[j].SendTime
 }
 
-// Implement the sort.Interface interface exchange element method
+// Swap Implement the sort.Interface exchange element method
 func (s MsgFormats) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }

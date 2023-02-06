@@ -406,8 +406,8 @@ func (d *DataBases) GetMsgBySeqListMongo2(uid string, seqList []uint32, operatio
 func (d *DataBases) GetSuperGroupMsgBySeqListMongo(groupID string, seqList []uint32, operationID string) (seqMsg []*open_im_sdk.MsgData, err error) {
 	var hasSeqList []uint32
 	singleCount := 0
-	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
-	defer cancle()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancel()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 
 	m := func(uid string, seqList []uint32) map[string][]uint32 {

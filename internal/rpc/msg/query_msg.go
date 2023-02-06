@@ -10,7 +10,7 @@ import (
 	go_redis "github.com/go-redis/redis/v8"
 )
 
-func (rpc *rpcChat) GetSuperGroupMsg(context context.Context, req *msg.GetSuperGroupMsgReq) (*msg.GetSuperGroupMsgResp, error) {
+func (rpc *RpcChat) GetSuperGroupMsg(context context.Context, req *msg.GetSuperGroupMsgReq) (*msg.GetSuperGroupMsgResp, error) {
 	log.Debug(req.OperationID, utils.GetSelfFuncName(), req.String())
 	resp := new(msg.GetSuperGroupMsgResp)
 	redisMsgList, failedSeqList, err := commonDB.DB.GetMessageListBySeq(req.GroupID, []uint32{req.Seq}, req.OperationID)
@@ -30,6 +30,7 @@ func (rpc *rpcChat) GetSuperGroupMsg(context context.Context, req *msg.GetSuperG
 			return resp, nil
 		} else {
 			promePkg.PromeAdd(promePkg.MsgPullFromMongoSuccessCounter, len(msgList))
+			promePkg.PromeAdd(promePkg.MsgPullFromRedisSuccessCounter, len(redisMsgList))
 			redisMsgList = append(redisMsgList, msgList...)
 			for _, m := range msgList {
 				resp.MsgData = m
@@ -46,6 +47,6 @@ func (rpc *rpcChat) GetSuperGroupMsg(context context.Context, req *msg.GetSuperG
 	return resp, nil
 }
 
-func (rpc *rpcChat) GetWriteDiffMsg(context context.Context, req *msg.GetWriteDiffMsgReq) (*msg.GetWriteDiffMsgResp, error) {
+func (rpc *RpcChat) GetWriteDiffMsg(context context.Context, req *msg.GetWriteDiffMsgReq) (*msg.GetWriteDiffMsgResp, error) {
 	panic("implement me")
 }

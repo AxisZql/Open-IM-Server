@@ -29,7 +29,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-//When the number of group members is greater than this value，Online users will be sent first，Guaranteed service availability
+// When the number of group members is greater than this value，Online users will be sent first，Guaranteed service availability
 const GroupMemberNum = 500
 
 var (
@@ -107,7 +107,7 @@ func userIsMuteInGroup(groupID, userID string) (bool, error) {
 	return false, nil
 }
 
-func (rpc *rpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, string, []string) {
+func (rpc *RpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, string, []string) {
 	switch data.MsgData.SessionType {
 	case constant.SingleChatType:
 		if utils.IsContain(data.MsgData.SendID, config.Config.Manager.AppManagerUid) {
@@ -256,7 +256,7 @@ func (rpc *rpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, s
 	}
 
 }
-func (rpc *rpcChat) encapsulateMsgData(msg *sdk_ws.MsgData) {
+func (rpc *RpcChat) encapsulateMsgData(msg *sdk_ws.MsgData) {
 	msg.ServerMsgID = GetMsgID(msg.SendID)
 	msg.SendTime = utils.GetCurrentTimestampByMill()
 	switch msg.ContentType {
@@ -304,7 +304,7 @@ func (rpc *rpcChat) encapsulateMsgData(msg *sdk_ws.MsgData) {
 		utils.SetSwitchFromOptions(msg.Options, constant.IsOfflinePush, false)
 	}
 }
-func (rpc *rpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.SendMsgResp, error) {
+func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.SendMsgResp, error) {
 	replay := pbChat.SendMsgResp{}
 	log.Info(pb.OperationID, "rpc sendMsg come here ", pb.String())
 	flag, errCode, errMsg := isMessageHasReadEnabled(pb)
@@ -597,7 +597,7 @@ func (rpc *rpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 	}
 }
 
-func (rpc *rpcChat) sendMsgToWriter(m *pbChat.MsgDataToMQ, key string, status string) error {
+func (rpc *RpcChat) sendMsgToWriter(m *pbChat.MsgDataToMQ, key string, status string) error {
 	switch status {
 	case constant.OnlineStatus:
 		if m.MsgData.ContentType == constant.SignalingNotification {
@@ -1063,7 +1063,7 @@ func valueCopy(pb *pbChat.SendMsgReq) *pbChat.SendMsgReq {
 	return &pbChat.SendMsgReq{Token: pb.Token, OperationID: pb.OperationID, MsgData: &msgData}
 }
 
-func (rpc *rpcChat) sendMsgToGroup(list []string, pb pbChat.SendMsgReq, status string, sendTag *bool, wg *sync.WaitGroup) {
+func (rpc *RpcChat) sendMsgToGroup(list []string, pb pbChat.SendMsgReq, status string, sendTag *bool, wg *sync.WaitGroup) {
 	//	log.Debug(pb.OperationID, "split userID ", list)
 	offlinePushInfo := sdk_ws.OfflinePushInfo{}
 	if pb.MsgData.OfflinePushInfo != nil {
@@ -1099,7 +1099,7 @@ func (rpc *rpcChat) sendMsgToGroup(list []string, pb pbChat.SendMsgReq, status s
 	wg.Done()
 }
 
-func (rpc *rpcChat) sendMsgToGroupOptimization(list []string, groupPB *pbChat.SendMsgReq, status string, sendTag *bool, wg *sync.WaitGroup) {
+func (rpc *RpcChat) sendMsgToGroupOptimization(list []string, groupPB *pbChat.SendMsgReq, status string, sendTag *bool, wg *sync.WaitGroup) {
 	msgToMQGroup := pbChat.MsgDataToMQ{Token: groupPB.Token, OperationID: groupPB.OperationID, MsgData: groupPB.MsgData}
 	tempOptions := make(map[string]bool, 1)
 	for k, v := range groupPB.MsgData.Options {

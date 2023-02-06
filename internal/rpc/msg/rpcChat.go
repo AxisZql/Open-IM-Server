@@ -23,7 +23,7 @@ import (
 type MessageWriter interface {
 	SendMessage(m proto.Message, key string, operationID string) (int32, int64, error)
 }
-type rpcChat struct {
+type RpcChat struct {
 	rpcPort         int
 	rpcRegisterName string
 	etcdSchema      string
@@ -40,9 +40,9 @@ type deleteMsg struct {
 	OperationID string
 }
 
-func NewRpcChatServer(port int) *rpcChat {
+func NewRpcChatServer(port int) *RpcChat {
 	log.NewPrivateLog(constant.LogFileName)
-	rc := rpcChat{
+	rc := RpcChat{
 		rpcPort:         port,
 		rpcRegisterName: config.Config.RpcRegisterName.OpenImMsgName,
 		etcdSchema:      config.Config.Etcd.EtcdSchema,
@@ -54,7 +54,7 @@ func NewRpcChatServer(port int) *rpcChat {
 	return &rc
 }
 
-func (rpc *rpcChat) initPrometheus() {
+func (rpc *RpcChat) initPrometheus() {
 	//sendMsgSuccessCounter = promauto.NewCounter(prometheus.CounterOpts{
 	//	Name: "send_msg_success",
 	//	Help: "The number of send msg success",
@@ -80,7 +80,7 @@ func (rpc *rpcChat) initPrometheus() {
 	promePkg.NewWorkSuperGroupChatMsgProcessFailedCounter()
 }
 
-func (rpc *rpcChat) Run() {
+func (rpc *RpcChat) Run() {
 	log.Info("", "rpcChat init...")
 	listenIP := ""
 	if config.Config.ListenIP == "" {
@@ -132,20 +132,20 @@ func (rpc *rpcChat) Run() {
 	log.Info("", "rpc rpcChat init success")
 }
 
-func (rpc *rpcChat) runCh() {
+func (rpc *RpcChat) runCh() {
 	log.NewInfo("", "start del msg chan ")
 	for {
 		select {
-		case msg := <-rpc.delMsgCh:
-			log.NewInfo(msg.OperationID, utils.GetSelfFuncName(), "delmsgch recv new: ", msg)
-			db.DB.DelMsgFromCache(msg.UserID, msg.SeqList, msg.OperationID)
-			unexistSeqList, err := db.DB.DelMsgBySeqList(msg.UserID, msg.SeqList, msg.OperationID)
+		case _msg := <-rpc.delMsgCh:
+			log.NewInfo(_msg.OperationID, utils.GetSelfFuncName(), "delmsgch recv new: ", _msg)
+			db.DB.DelMsgFromCache(_msg.UserID, _msg.SeqList, _msg.OperationID)
+			unexistSeqList, err := db.DB.DelMsgBySeqList(_msg.UserID, _msg.SeqList, _msg.OperationID)
 			if err != nil {
-				log.NewError(msg.OperationID, utils.GetSelfFuncName(), "DelMsgBySeqList args: ", msg.UserID, msg.SeqList, msg.OperationID, err.Error())
+				log.NewError(_msg.OperationID, utils.GetSelfFuncName(), "DelMsgBySeqList args: ", _msg.UserID, _msg.SeqList, _msg.OperationID, err.Error())
 				continue
 			}
 			if len(unexistSeqList) > 0 {
-				DeleteMessageNotification(msg.OpUserID, msg.UserID, unexistSeqList, msg.OperationID)
+				DeleteMessageNotification(_msg.OpUserID, _msg.UserID, unexistSeqList, _msg.OperationID)
 			}
 		}
 	}
