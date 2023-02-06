@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// DeleteMessageNotification seqList record all the msg id that want to delete 【axis】
 func DeleteMessageNotification(opUserID, userID string, seqList []uint32, operationID string) {
 	DeleteMessageTips := open_im_sdk.DeleteMessageTips{OpUserID: opUserID, UserID: userID, SeqList: seqList}
 	MessageNotification(operationID, userID, userID, constant.DeleteMessageNotification, &DeleteMessageTips)

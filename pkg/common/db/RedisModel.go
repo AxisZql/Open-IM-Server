@@ -189,7 +189,7 @@ func (d *DataBases) GetMessageListBySeq(userID string, seqList []uint32, operati
 			log2.Debug(operationID, "redis get message error: ", err.Error(), v)
 		} else {
 			msg := pbCommon.MsgData{}
-			err = jsonpb.UnmarshalString(result, &msg)
+			err = jsonpb.UnmarshalString(result, &msg)// axis 使用protobuf进行序列化，空间占用比json更小，性能更高
 			if err != nil {
 				errResult = err
 				failedSeqList = append(failedSeqList, v)

@@ -358,7 +358,8 @@ func (d *DataBases) GetMsgBySeqListMongo2(uid string, seqList []uint32, operatio
 	m := func(uid string, seqList []uint32) map[string][]uint32 {
 		t := make(map[string][]uint32)
 		for i := 0; i < len(seqList); i++ {
-			seqUid := getSeqUid(uid, seqList[i])
+			// 【axis】return  uid:str(sqlId/5000),目的是按照0-5000，5001-10000...等范围将消息分批
+			seqUid := getSeqUid(uid, seqList[i]) //获取每一消息批次的key [axis]
 			if value, ok := t[seqUid]; !ok {
 				var temp []uint32
 				t[seqUid] = append(temp, seqList[i])
@@ -381,6 +382,7 @@ func (d *DataBases) GetMsgBySeqListMongo2(uid string, seqList []uint32, operatio
 				log.NewError(operationID, "Unmarshal err", seqUid, value, uid, seqList, err.Error())
 				return nil, err
 			}
+			// axis 再次检查当前msg是否在对应的消息批次
 			if isContainInt32(msg.Seq, value) {
 				seqMsg = append(seqMsg, msg)
 				hasSeqList = append(hasSeqList, msg.Seq)
@@ -391,6 +393,7 @@ func (d *DataBases) GetMsgBySeqListMongo2(uid string, seqList []uint32, operatio
 			}
 		}
 	}
+	// axis 通过mongodb也获取不到的消息，则生成空消息返回
 	if len(hasSeqList) != len(seqList) {
 		var diff []uint32
 		diff = utils.Difference(hasSeqList, seqList)

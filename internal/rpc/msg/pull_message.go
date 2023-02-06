@@ -3,6 +3,7 @@ package msg
 import (
 	"Open_IM/pkg/utils"
 	"context"
+
 	go_redis "github.com/go-redis/redis/v8"
 
 	commonDB "Open_IM/pkg/common/db"
@@ -46,6 +47,7 @@ func (rpc *rpcChat) GetMaxAndMinSeq(_ context.Context, in *open_im_sdk.GetMaxAnd
 	return resp, nil
 }
 
+// PullMessageBySeqList 通过消息seq拉取
 func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.PullMessageBySeqListReq) (*open_im_sdk.PullMessageBySeqListResp, error) {
 	log.NewInfo(in.OperationID, "rpc PullMessageBySeqList is arriving", in.String())
 	resp := new(open_im_sdk.PullMessageBySeqListResp)
@@ -58,6 +60,7 @@ func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.Pull
 		} else {
 			log.Debug(in.OperationID, "get message from redis is nil", failedSeqList)
 		}
+		// aixs 根据从redis中获取失败的消息的seq号，到mongodb中获取
 		msgList, err1 := commonDB.DB.GetMsgBySeqListMongo2(in.UserID, failedSeqList, in.OperationID)
 		if err1 != nil {
 			promePkg.PromeAdd(promePkg.MsgPullFromMongoFailedCounter, len(failedSeqList))
@@ -66,7 +69,8 @@ func (rpc *rpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.Pull
 			resp.ErrMsg = err1.Error()
 			return resp, nil
 		} else {
-			promePkg.PromeAdd(promePkg.MsgPullFromMongoSuccessCounter, len(msgList))
+			promePkg.PromeAdd(promePkg.MsgPullFromMongoSuccessCounter, len(msgList))      // prometheus计数 axis
+			promePkg.PromeAdd(promePkg.MsgPullFromRedisSuccessCounter, len(redisMsgList)) // axis add
 			redisMsgList = append(redisMsgList, msgList...)
 			resp.List = redisMsgList
 		}
@@ -115,12 +119,12 @@ func (s MsgFormats) Len() int {
 	return len(s)
 }
 
-//Implement the sort.Interface interface comparison element method
+// Implement the sort.Interface interface comparison element method
 func (s MsgFormats) Less(i, j int) bool {
 	return s[i].SendTime < s[j].SendTime
 }
 
-//Implement the sort.Interface interface exchange element method
+// Implement the sort.Interface interface exchange element method
 func (s MsgFormats) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
