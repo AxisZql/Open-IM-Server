@@ -33,6 +33,7 @@ import (
 const GroupMemberNum = 500
 
 var (
+	// axis 排除的消息类型：1. 已读消息回执  2. 群组已读消息回执
 	ExcludeContentType = []int{constant.HasReadReceipt, constant.GroupHasReadReceipt}
 )
 
@@ -44,6 +45,7 @@ type Validator interface {
 //
 //}
 
+// MessageRevoked 撤回类型消息 axis
 type MessageRevoked struct {
 	RevokerID                   string `json:"revokerID"`
 	RevokerRole                 int32  `json:"revokerRole"`
@@ -78,6 +80,7 @@ type MsgCallBackResp struct {
 	}
 }
 
+// 判断消息已读功能是否启用
 func isMessageHasReadEnabled(pb *pbChat.SendMsgReq) (bool, int32, string) {
 	switch pb.MsgData.ContentType {
 	case constant.HasReadReceipt:
@@ -97,6 +100,7 @@ func isMessageHasReadEnabled(pb *pbChat.SendMsgReq) (bool, int32, string) {
 }
 
 func userIsMuteInGroup(groupID, userID string) (bool, error) {
+	// 从缓存中获取群成员信息，用rackcache确保缓存和db的强一致性
 	groupMemberInfo, err := rocksCache.GetGroupMemberInfoFromCache(groupID, userID)
 	if err != nil {
 		return false, utils.Wrap(err, "")
@@ -110,13 +114,16 @@ func userIsMuteInGroup(groupID, userID string) (bool, error) {
 func (rpc *RpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, string, []string) {
 	switch data.MsgData.SessionType {
 	case constant.SingleChatType:
+		// 管理员发的的消息免验证  axis
 		if utils.IsContain(data.MsgData.SendID, config.Config.Manager.AppManagerUid) {
 			return true, 0, "", nil
 		}
+		// 通知类型的消息免验证 axis
 		if data.MsgData.ContentType <= constant.NotificationEnd && data.MsgData.ContentType >= constant.NotificationBegin {
 			return true, 0, "", nil
 		}
 		log.NewDebug(data.OperationID, *config.Config.MessageVerify.FriendVerify)
+		// 获取消息接收方的黑名单列表信息 axis
 		reqGetBlackIDListFromCache := &cacheRpc.GetBlackIDListFromCacheReq{UserID: data.MsgData.RecvID, OperationID: data.OperationID}
 		etcdConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImCacheName, data.OperationID)
 		if etcdConn == nil {
@@ -138,6 +145,7 @@ func (rpc *RpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, s
 				}
 			}
 		}
+		// 消息好友验证 axis
 		log.NewDebug(data.OperationID, *config.Config.MessageVerify.FriendVerify)
 		if *config.Config.MessageVerify.FriendVerify {
 			reqGetFriendIDListFromCache := &cacheRpc.GetFriendIDListFromCacheReq{UserID: data.MsgData.RecvID, OperationID: data.OperationID}

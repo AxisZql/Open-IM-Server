@@ -123,6 +123,7 @@ func (d *DataBases) DelMsgBySeqList(userID string, seqList []uint32, operationID
 				return
 			}
 			lock.Lock()
+			// 记录在mongo中不存在的msg seq列表 axis
 			totalUnexistSeqList = append(totalUnexistSeqList, unexistSeqList...)
 			lock.Unlock()
 		}(k, v, operationID)
@@ -132,10 +133,12 @@ func (d *DataBases) DelMsgBySeqList(userID string, seqList []uint32, operationID
 
 func (d *DataBases) DelMsgBySeqListInOneDoc(suffixUserID string, seqList []uint32, operationID string) ([]uint32, error) {
 	log.Debug(operationID, utils.GetSelfFuncName(), "args ", suffixUserID, seqList)
+	// axis 从mongodb中获取存在的msg seq【seqMsgList】和它们分别在seqList中下标【indexList】,以及在mongo中不存在的msg seq【unexistSeqList】
 	seqMsgList, indexList, unexistSeqList, err := d.GetMsgAndIndexBySeqListInOneMongo2(suffixUserID, seqList, operationID)
 	if err != nil {
 		return nil, utils.Wrap(err, "")
 	}
+	// 标记删除seqList中所有存在的msg axis
 	for i, v := range seqMsgList {
 		if err := d.ReplaceMsgByIndex(suffixUserID, v, operationID, indexList[i]); err != nil {
 			return nil, utils.Wrap(err, "")
@@ -168,7 +171,7 @@ func (d *DataBases) ReplaceMsgByIndex(suffixUserID string, msg *open_im_sdk.MsgD
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	s := fmt.Sprintf("msg.%d.msg", seqIndex)
 	log.NewDebug(operationID, utils.GetSelfFuncName(), seqIndex, s)
-	msg.Status = constant.MsgDeleted
+	msg.Status = constant.MsgDeleted //axis 都是标记删除【究竟是只可能标记删除，还是遵循不使用物理删除的原则】
 	bytes, err := proto.Marshal(msg)
 	if err != nil {
 		log.NewError(operationID, utils.GetSelfFuncName(), "proto marshal failed ", err.Error(), msg.String())

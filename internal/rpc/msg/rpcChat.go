@@ -10,10 +10,11 @@ import (
 	"Open_IM/pkg/grpc-etcdv3/getcdv3"
 	"Open_IM/pkg/proto/msg"
 	"Open_IM/pkg/utils"
-	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
 
 	grpcPrometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
@@ -138,7 +139,8 @@ func (rpc *RpcChat) runCh() {
 		select {
 		case _msg := <-rpc.delMsgCh:
 			log.NewInfo(_msg.OperationID, utils.GetSelfFuncName(), "delmsgch recv new: ", _msg)
-			db.DB.DelMsgFromCache(_msg.UserID, _msg.SeqList, _msg.OperationID)
+			db.DB.DelMsgFromCache(_msg.UserID, _msg.SeqList, _msg.OperationID) // axis 在redis中将对应msg seq的消息标记为删除
+			// 逻辑删除，并返回不存在的msg seq列表 axis
 			unexistSeqList, err := db.DB.DelMsgBySeqList(_msg.UserID, _msg.SeqList, _msg.OperationID)
 			if err != nil {
 				log.NewError(_msg.OperationID, utils.GetSelfFuncName(), "DelMsgBySeqList args: ", _msg.UserID, _msg.SeqList, _msg.OperationID, err.Error())

@@ -447,6 +447,7 @@ func GetGroupMemberListHashFromCache(groupID string) (uint64, error) {
 			return "", utils.Wrap(err, "GetGroupMemberIDListFromCache failed")
 		}
 		sort.Strings(groupMemberIDList)
+		// 利用群中所有成员的id计算存放群成员消息的hash key
 		var all string
 		for _, v := range groupMemberIDList {
 			all += v
@@ -455,6 +456,7 @@ func GetGroupMemberListHashFromCache(groupID string) (uint64, error) {
 		bi.SetString(utils.Md5(all)[0:8], 16)
 		return strconv.Itoa(int(bi.Uint64())), nil
 	}
+	// 最后的hash值是一个整数 axis
 	hashCode, err := db.DB.Rc.Fetch(groupMemberListHashCache+groupID, time.Second*30*60, generateHash)
 	if err != nil {
 		return 0, utils.Wrap(err, "fetch failed")
