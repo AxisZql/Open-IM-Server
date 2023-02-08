@@ -25,6 +25,7 @@ import (
 	"time"
 
 	promePkg "Open_IM/pkg/common/prometheus"
+
 	go_redis "github.com/go-redis/redis/v8"
 	"github.com/golang/protobuf/proto"
 )
@@ -231,6 +232,7 @@ func (rpc *RpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, s
 				}
 			}
 		}
+		// TODO: case 不是确保了是SuperGroup了吗？
 		if groupInfo.GroupType == constant.SuperGroup {
 			return true, 0, "", nil
 		} else {
@@ -289,13 +291,16 @@ func (rpc *RpcChat) encapsulateMsgData(msg *sdk_ws.MsgData) {
 	case constant.Custom:
 		fallthrough
 	case constant.Quote:
+		// 引用类型消息记录	axis
 		utils.SetSwitchFromOptions(msg.Options, constant.IsConversationUpdate, true)
 		utils.SetSwitchFromOptions(msg.Options, constant.IsUnreadCount, true)
 		utils.SetSwitchFromOptions(msg.Options, constant.IsSenderSync, true)
 	case constant.Revoke:
+		// 撤回类型消息不设置已读提示，且不能离线推送 axis
 		utils.SetSwitchFromOptions(msg.Options, constant.IsUnreadCount, false)
 		utils.SetSwitchFromOptions(msg.Options, constant.IsOfflinePush, false)
 	case constant.HasReadReceipt:
+		// 已读回执类型消息 axis
 		log.Info("", "this is a test start", msg, msg.Options)
 		utils.SetSwitchFromOptions(msg.Options, constant.IsConversationUpdate, false)
 		utils.SetSwitchFromOptions(msg.Options, constant.IsSenderConversationUpdate, false)
@@ -363,12 +368,16 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 			return returnMsg(&replay, pb, errCode, errMsg, "", 0)
 		}
 		t1 = time.Now()
+		// 根据接收方的消息接收设置判断是否发送该消息 axis
 		isSend := modifyMessageByUserMessageReceiveOpt(pb.MsgData.RecvID, pb.MsgData.SendID, constant.SingleChatType, pb)
 		log.Info(pb.OperationID, "modifyMessageByUserMessageReceiveOpt ", " cost time: ", time.Since(t1))
+		// 本系统采用的是写扩散的消息收发模型，故会同时往收发两方的信箱中写入消息
 		if isSend {
 			msgToMQSingle.MsgData = pb.MsgData
 			log.NewInfo(msgToMQSingle.OperationID, msgToMQSingle)
 			t1 = time.Now()
+			// 这里采用key来区分每个用户的信箱的效果要比为每个用户创建一个单独的topic充当信箱的性能要好，通过开启partition的hash分区，确保了
+			// 相同key的消息落到同一个partition中，避免了因为使用多个topic的partion而产生的消息乱序问题【因为Kafka是顺序读取每个partition中的msg的】
 			err1 := rpc.sendMsgToWriter(&msgToMQSingle, msgToMQSingle.MsgData.RecvID, constant.OnlineStatus)
 			log.Info(pb.OperationID, "sendMsgToWriter ", " cost time: ", time.Since(t1))
 			if err1 != nil {
@@ -624,6 +633,7 @@ func (rpc *RpcChat) sendMsgToWriter(m *pbChat.MsgDataToMQ, key string, status st
 				return nil
 			}
 		}
+		// 将消息写入Kafka axis
 		pid, offset, err := rpc.messageWriter.SendMessage(m, key, m.OperationID)
 		if err != nil {
 			log.Error(m.OperationID, "kafka send failed", "send data", m.String(), "pid", pid, "offset", offset, "err", err.Error(), "key", key, status)
@@ -655,10 +665,9 @@ func returnMsg(replay *pbChat.SendMsgResp, pb *pbChat.SendMsgReq, errCode int32,
 }
 
 func modifyMessageByUserMessageReceiveOpt(userID, sourceID string, sessionType int, pb *pbChat.SendMsgReq) bool {
-	opt, err := db.DB.GetUserGlobalMsgRecvOpt(userID)
+	opt, err := db.DB.GetUserGlobalMsgRecvOpt(userID) // 获取接收方的全局接收消息设置 axis
 	if err != nil {
 		log.NewError(pb.OperationID, "GetUserGlobalMsgRecvOpt from redis err", userID, pb.String(), err.Error())
-
 	}
 	switch opt {
 	case constant.ReceiveMessage:
@@ -672,6 +681,7 @@ func modifyMessageByUserMessageReceiveOpt(userID, sourceID string, sessionType i
 		return true
 	}
 	conversationID := utils.GetConversationIDBySessionType(sourceID, sessionType)
+	// 获取接收方于发送用户的消息会话设置 axis
 	singleOpt, sErr := db.DB.GetSingleConversationRecvMsgOpt(userID, conversationID)
 	if sErr != nil && sErr != go_redis.Nil {
 		log.NewError(pb.OperationID, "GetSingleConversationMsgOpt from redis err", conversationID, pb.String(), sErr.Error())
