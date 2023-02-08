@@ -135,7 +135,7 @@ func (x *OnlinePushMsgResp) GetResp() []*SingleMsgToUserPlatform {
 	return nil
 }
 
-type SingelMsgToUserResultList struct {
+type SingleMsgToUserResultList struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -145,8 +145,8 @@ type SingelMsgToUserResultList struct {
 	OnlinePush bool                       `protobuf:"varint,3,opt,name=onlinePush,proto3" json:"onlinePush,omitempty"`
 }
 
-func (x *SingelMsgToUserResultList) Reset() {
-	*x = SingelMsgToUserResultList{}
+func (x *SingleMsgToUserResultList) Reset() {
+	*x = SingleMsgToUserResultList{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_relay_relay_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -154,13 +154,13 @@ func (x *SingelMsgToUserResultList) Reset() {
 	}
 }
 
-func (x *SingelMsgToUserResultList) String() string {
+func (x *SingleMsgToUserResultList) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SingelMsgToUserResultList) ProtoMessage() {}
+func (*SingleMsgToUserResultList) ProtoMessage() {}
 
-func (x *SingelMsgToUserResultList) ProtoReflect() protoreflect.Message {
+func (x *SingleMsgToUserResultList) ProtoReflect() protoreflect.Message {
 	mi := &file_relay_relay_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -173,25 +173,25 @@ func (x *SingelMsgToUserResultList) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SingelMsgToUserResultList.ProtoReflect.Descriptor instead.
-func (*SingelMsgToUserResultList) Descriptor() ([]byte, []int) {
+func (*SingleMsgToUserResultList) Descriptor() ([]byte, []int) {
 	return file_relay_relay_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *SingelMsgToUserResultList) GetUserID() string {
+func (x *SingleMsgToUserResultList) GetUserID() string {
 	if x != nil {
 		return x.UserID
 	}
 	return ""
 }
 
-func (x *SingelMsgToUserResultList) GetResp() []*SingleMsgToUserPlatform {
+func (x *SingleMsgToUserResultList) GetResp() []*SingleMsgToUserPlatform {
 	if x != nil {
 		return x.Resp
 	}
 	return nil
 }
 
-func (x *SingelMsgToUserResultList) GetOnlinePush() bool {
+func (x *SingleMsgToUserResultList) GetOnlinePush() bool {
 	if x != nil {
 		return x.OnlinePush
 	}
@@ -266,7 +266,7 @@ type OnlineBatchPushOneMsgResp struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SinglePushResult []*SingelMsgToUserResultList `protobuf:"bytes,1,rep,name=singlePushResult,proto3" json:"singlePushResult,omitempty"`
+	SinglePushResult []*SingleMsgToUserResultList `protobuf:"bytes,1,rep,name=singlePushResult,proto3" json:"singlePushResult,omitempty"`
 }
 
 func (x *OnlineBatchPushOneMsgResp) Reset() {
@@ -301,7 +301,7 @@ func (*OnlineBatchPushOneMsgResp) Descriptor() ([]byte, []int) {
 	return file_relay_relay_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *OnlineBatchPushOneMsgResp) GetSinglePushResult() []*SingelMsgToUserResultList {
+func (x *OnlineBatchPushOneMsgResp) GetSinglePushResult() []*SingleMsgToUserResultList {
 	if x != nil {
 		return x.SinglePushResult
 	}
@@ -1088,7 +1088,7 @@ var file_relay_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_relay_relay_proto_goTypes = []interface{}{
 	(*OnlinePushMsgReq)(nil),                       // 0: relay.OnlinePushMsgReq
 	(*OnlinePushMsgResp)(nil),                      // 1: relay.OnlinePushMsgResp
-	(*SingelMsgToUserResultList)(nil),              // 2: relay.SingelMsgToUserResultList
+	(*SingleMsgToUserResultList)(nil),              // 2: relay.SingelMsgToUserResultList
 	(*OnlineBatchPushOneMsgReq)(nil),               // 3: relay.OnlineBatchPushOneMsgReq
 	(*OnlineBatchPushOneMsgResp)(nil),              // 4: relay.OnlineBatchPushOneMsgResp
 	(*SingleMsgToUserPlatform)(nil),                // 5: relay.SingleMsgToUserPlatform
@@ -1162,7 +1162,7 @@ func file_relay_relay_proto_init() {
 			}
 		}
 		file_relay_relay_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SingelMsgToUserResultList); i {
+			switch v := v.(*SingleMsgToUserResultList); i {
 			case 0:
 				return &v.state
 			case 1:

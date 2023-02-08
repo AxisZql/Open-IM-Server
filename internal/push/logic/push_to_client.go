@@ -38,10 +38,10 @@ type AtContent struct {
 	IsAtSelf   bool     `json:"isAtSelf"`
 }
 
-//var grpcCons []*grpc.ClientConn
-
+// var grpcCons []*grpc.ClientConn
+// MsgToUser，先通过websocket推送消息，然后调用第三方推送服务推送消息到手机任务栏【websocket推送成功后第三方推送不启用】，即使对方离线，第三方推送服务也正常推送 axis
 func MsgToUser(pushMsg *pbPush.PushMsgReq) {
-	var wsResult []*pbRelay.SingelMsgToUserResultList
+	var wsResult []*pbRelay.SingleMsgToUserResultList
 	isOfflinePush := utils.GetSwitchFromOptions(pushMsg.MsgData.Options, constant.IsOfflinePush)
 	log.Debug(pushMsg.OperationID, "Get msg from msg_transfer And push msg", pushMsg.String())
 	grpcCons := getcdv3.GetDefaultGatewayConn4Unique(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), pushMsg.OperationID)
@@ -61,6 +61,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 	log.Debug(pushMsg.OperationID, "len  grpc", len(grpcCons), "data", pushMsg.String())
 	for _, v := range grpcCons {
 		msgClient := pbRelay.NewRelayClient(v)
+		// 根据接收者id，获取对应的websocket连接，后通过websocket来实现消息的推送 axis
 		reply, err := msgClient.SuperGroupOnlineBatchPushOneMsg(context.Background(), &pbRelay.OnlineBatchPushOneMsgReq{OperationID: pushMsg.OperationID, MsgData: pushMsg.MsgData, PushToUserIDList: []string{pushMsg.PushToUserID}})
 		if err != nil {
 			log.NewError("SuperGroupOnlineBatchPushOneMsg push data to client rpc err", pushMsg.OperationID, "err", err)
@@ -72,6 +73,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 	}
 	log.NewInfo(pushMsg.OperationID, "push_result", wsResult, "sendData", pushMsg.MsgData)
 	successCount++
+	// 处理离线推送，如果用户离线【也就是app进程不在线】，则采用第三方推送服务推送消息到用户手机通知栏 axis
 	if isOfflinePush && pushMsg.PushToUserID != pushMsg.MsgData.SendID {
 		// save invitation info for offline push
 		for _, v := range wsResult {
@@ -79,6 +81,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 				return
 			}
 		}
+		// 如果是webrtc 信号通知信息 axis
 		if pushMsg.MsgData.ContentType == constant.SignalingNotification {
 			isSend, err := db.DB.HandleSignalInfo(pushMsg.OperationID, pushMsg.MsgData, pushMsg.PushToUserID)
 			if err != nil {
@@ -104,6 +107,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 			detailContent = pushMsg.MsgData.OfflinePushInfo.Desc
 		}
 
+		// 如果离线推送服务没有初始化，则直接返回 axis
 		if offlinePusher == nil {
 			return
 		}
@@ -112,6 +116,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 			log.NewError(pushMsg.OperationID, utils.GetSelfFuncName(), "GetOfflinePushOpts failed", pushMsg, err.Error())
 		}
 		log.NewInfo(pushMsg.OperationID, utils.GetSelfFuncName(), UIDList, title, detailContent, "opts:", opts)
+		// 设置会话列表新消息提示标题 axis
 		if title == "" {
 			switch pushMsg.MsgData.ContentType {
 			case constant.Text:
@@ -143,6 +148,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 		if detailContent == "" {
 			detailContent = title
 		}
+		// 用户手机通知栏的消息推送，推送服务采用第三方服务  axis
 		pushResult, err := offlinePusher.Push(UIDList, title, detailContent, pushMsg.OperationID, opts)
 		if err != nil {
 			promePkg.PromeInc(promePkg.MsgOfflinePushFailedCounter)
@@ -155,7 +161,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 }
 
 func MsgToSuperGroupUser(pushMsg *pbPush.PushMsgReq) {
-	var wsResult []*pbRelay.SingelMsgToUserResultList
+	var wsResult []*pbRelay.SingleMsgToUserResultList
 	isOfflinePush := utils.GetSwitchFromOptions(pushMsg.MsgData.Options, constant.IsOfflinePush)
 	log.Debug(pushMsg.OperationID, "Get super group msg from msg_transfer And push msg", pushMsg.String(), config.Config.Callback.CallbackBeforeSuperGroupOnlinePush.Enable)
 	var pushToUserIDList []string
@@ -280,6 +286,7 @@ func MsgToSuperGroupUser(pushMsg *pbPush.PushMsgReq) {
 
 func GetOfflinePushOpts(pushMsg *pbPush.PushMsgReq) (opts push.PushOpts, err error) {
 	if pushMsg.MsgData.ContentType < constant.SignalingNotificationEnd && pushMsg.MsgData.ContentType > constant.SignalingNotificationBegin {
+		// 如果是通知类型消息 axis
 		req := &pbRtc.SignalReq{}
 		if err := proto.Unmarshal(pushMsg.MsgData.Content, req); err != nil {
 			return opts, utils.Wrap(err, "")

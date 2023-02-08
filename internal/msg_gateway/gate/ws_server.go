@@ -41,7 +41,7 @@ type WServer struct {
 	wsMaxConnNum int
 	wsUpGrader   *websocket.Upgrader
 	wsConnToUser map[*UserConn]map[int]string
-	wsUserToConn map[string]map[int]*UserConn
+	wsUserToConn map[string]map[int]*UserConn // userid->platformID->websocket instance [axis]
 }
 
 func (ws *WServer) onInit(wsPort int) {
@@ -419,19 +419,19 @@ func (ws *WServer) getUserAllCons(uid string) map[int]*UserConn {
 	return nil
 }
 
-//func (ws *WServer) getUserUid(conn *UserConn) (uid string, platform int) {
-//	rwLock.RLock()
-//	defer rwLock.RUnlock()
+//	func (ws *WServer) getUserUid(conn *UserConn) (uid string, platform int) {
+//		rwLock.RLock()
+//		defer rwLock.RUnlock()
 //
-//	if stringMap, ok := ws.wsConnToUser[conn]; ok {
-//		for k, v := range stringMap {
-//			platform = k
-//			uid = v
+//		if stringMap, ok := ws.wsConnToUser[conn]; ok {
+//			for k, v := range stringMap {
+//				platform = k
+//				uid = v
+//			}
+//			return uid, platform
 //		}
-//		return uid, platform
+//		return "", 0
 //	}
-//	return "", 0
-//}
 func (ws *WServer) headerCheck(w http.ResponseWriter, r *http.Request, operationID string) bool {
 	status := http.StatusUnauthorized
 	query := r.URL.Query()

@@ -172,13 +172,14 @@ func (r *RPCServer) GetUsersOnlineStatus(_ context.Context, req *pbRelay.GetUser
 	return &resp, nil
 }
 
+// SuperGroupOnlineBatchPushOneMsg 这里的名称虽然是批量推送群聊在线消息，但是也处理私聊消息的推送 axis
 func (r *RPCServer) SuperGroupOnlineBatchPushOneMsg(_ context.Context, req *pbRelay.OnlineBatchPushOneMsgReq) (*pbRelay.OnlineBatchPushOneMsgResp, error) {
 	log.NewInfo(req.OperationID, "BatchPushMsgToUser is arriving", req.String())
-	var singleUserResult []*pbRelay.SingelMsgToUserResultList
+	var singleUserResult []*pbRelay.SingleMsgToUserResultList
 	//r.GetBatchMsgForPush(req.OperationID,req.MsgData,req.PushToUserIDList,)
 	msgBytes, _ := proto.Marshal(req.MsgData)
 	mReply := Resp{
-		ReqIdentifier: constant.WSPushMsg,
+		ReqIdentifier: constant.WSPushMsg, // websocket 推送？ axis
 		OperationID:   req.OperationID,
 		Data:          msgBytes,
 	}
@@ -190,10 +191,10 @@ func (r *RPCServer) SuperGroupOnlineBatchPushOneMsg(_ context.Context, req *pbRe
 	}
 	for _, v := range req.PushToUserIDList {
 		var resp []*pbRelay.SingleMsgToUserPlatform
-		tempT := &pbRelay.SingelMsgToUserResultList{
+		tempT := &pbRelay.SingleMsgToUserResultList{
 			UserID: v,
 		}
-		userConnMap := ws.getUserAllCons(v)
+		userConnMap := ws.getUserAllCons(v) // 获取对应id用户在不同平台上的websocket连接实例 axis
 		for platform, userConn := range userConnMap {
 			if userConn != nil {
 				resultCode := sendMsgBatchToUser(userConn, replyBytes.Bytes(), req, platform, v)
@@ -213,7 +214,6 @@ func (r *RPCServer) SuperGroupOnlineBatchPushOneMsg(_ context.Context, req *pbRe
 		}
 		tempT.Resp = resp
 		singleUserResult = append(singleUserResult, tempT)
-
 	}
 
 	return &pbRelay.OnlineBatchPushOneMsgResp{
@@ -222,11 +222,11 @@ func (r *RPCServer) SuperGroupOnlineBatchPushOneMsg(_ context.Context, req *pbRe
 }
 func (r *RPCServer) OnlineBatchPushOneMsg(_ context.Context, req *pbRelay.OnlineBatchPushOneMsgReq) (*pbRelay.OnlineBatchPushOneMsgResp, error) {
 	log.NewInfo(req.OperationID, "BatchPushMsgToUser is arriving", req.String())
-	var singleUserResult []*pbRelay.SingelMsgToUserResultList
+	var singleUserResult []*pbRelay.SingleMsgToUserResultList
 
 	for _, v := range req.PushToUserIDList {
 		var resp []*pbRelay.SingleMsgToUserPlatform
-		tempT := &pbRelay.SingelMsgToUserResultList{
+		tempT := &pbRelay.SingleMsgToUserResultList{
 			UserID: v,
 		}
 		userConnMap := ws.getUserAllCons(v)

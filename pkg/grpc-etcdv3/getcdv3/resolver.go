@@ -277,6 +277,7 @@ var Conn4UniqueListMtx sync.RWMutex
 var IsUpdateStart bool
 var IsUpdateStartMtx sync.RWMutex
 
+// GetDefaultGatewayConn4Unique 从etcd获取msg gateway rpc服务实例 axis
 func GetDefaultGatewayConn4Unique(schema, etcdaddr, operationID string) []*grpc.ClientConn {
 	IsUpdateStartMtx.Lock()
 	if IsUpdateStart == false {
@@ -284,7 +285,7 @@ func GetDefaultGatewayConn4Unique(schema, etcdaddr, operationID string) []*grpc.
 		go func() {
 			for {
 				select {
-					// axis 30s后重新获取是什么意思？
+				// axis 30s后重新获取，为了保活
 				case <-time.After(time.Second * time.Duration(30)):
 					Conn4UniqueListMtx.Lock()
 					Conn4UniqueList = getConn4Unique(schema, etcdaddr, config.Config.RpcRegisterName.OpenImRelayName)
@@ -293,6 +294,7 @@ func GetDefaultGatewayConn4Unique(schema, etcdaddr, operationID string) []*grpc.
 			}
 		}()
 	}
+	// 保证上面30s存活更新只有一个在后台运行 axis
 	IsUpdateStart = true
 	IsUpdateStartMtx.Unlock()
 

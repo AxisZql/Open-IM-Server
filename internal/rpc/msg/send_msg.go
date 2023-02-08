@@ -377,7 +377,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 			log.NewInfo(msgToMQSingle.OperationID, msgToMQSingle)
 			t1 = time.Now()
 			// 这里采用key来区分每个用户的信箱的效果要比为每个用户创建一个单独的topic充当信箱的性能要好，通过开启partition的hash分区，确保了
-			// 相同key的消息落到同一个partition中，避免了因为使用多个topic的partion而产生的消息乱序问题【因为Kafka是顺序读取每个partition中的msg的】
+			// 相同key的消息落到同一个partition中，避免了因为使用多个topic的partition而产生的消息乱序问题【因为Kafka是顺序读取每个partition中的msg的】
 			err1 := rpc.sendMsgToWriter(&msgToMQSingle, msgToMQSingle.MsgData.RecvID, constant.OnlineStatus)
 			log.Info(pb.OperationID, "sendMsgToWriter ", " cost time: ", time.Since(t1))
 			if err1 != nil {
@@ -460,7 +460,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 		var sendTag bool
 		var split = 20
 		for k, v := range m {
-			remain := len(v) % split
+			remain := len(v) % split // 分批发送 axis
 			for i := 0; i < len(v)/split; i++ {
 				wg.Add(1)
 				tmp := valueCopy(pb)
@@ -468,6 +468,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 				go rpc.sendMsgToGroupOptimization(v[i*split:(i+1)*split], tmp, k, &sendTag, &wg)
 			}
 			if remain > 0 {
+				// 处理不满足一批次的消息 axis
 				wg.Add(1)
 				tmp := valueCopy(pb)
 				//	go rpc.sendMsgToGroup(v[split*(len(v)/split):], *pb, k, &sendTag, &wg)
@@ -484,11 +485,13 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 		if callbackResp.ErrCode != 0 {
 			log.NewError(pb.OperationID, utils.GetSelfFuncName(), "callbackAfterSendGroupMsg resp: ", callbackResp)
 		}
+		// 发送成功与否后的处理流程  axis
 		if !sendTag {
 			log.NewWarn(pb.OperationID, "send tag is ", sendTag)
 			promePkg.PromeInc(promePkg.GroupChatMsgProcessFailedCounter)
 			return returnMsg(&replay, pb, 201, "kafka send msg err", "", 0)
 		} else {
+			// 如果时@类型消息 axis
 			if pb.MsgData.ContentType == constant.AtText {
 				go func() {
 					var conversationReq pbConversation.ModifyConversationFieldReq
@@ -503,6 +506,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 					conversationReq.Conversation = &conversation
 					conversationReq.OperationID = pb.OperationID
 					conversationReq.FieldType = constant.FieldGroupAtType
+					// 判断@列表中是否包含@所有人的值 axis
 					tagAll := utils.IsContain(constant.AtAllString, pb.MsgData.AtUserIDList)
 					if tagAll {
 						atUserID = utils.DifferenceString([]string{constant.AtAllString}, pb.MsgData.AtUserIDList)
