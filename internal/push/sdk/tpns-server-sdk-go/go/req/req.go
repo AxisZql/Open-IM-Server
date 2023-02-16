@@ -230,6 +230,7 @@ func RingRaw(rr string) ReqOpt {
 	}
 }
 
+// Vibrate 震动 axis
 func Vibrate(v *int) ReqOpt {
 	return func(r *tpns.Request) {
 		r.Message.Android.Vibrate = v
@@ -242,6 +243,7 @@ func Lights(l *int) ReqOpt {
 	}
 }
 
+// Clearable 通知栏消息是否可清除 axis
 func Clearable(c *int) ReqOpt {
 	return func(r *tpns.Request) {
 		r.Message.Android.Clearable = c

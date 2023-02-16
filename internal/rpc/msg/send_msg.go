@@ -428,6 +428,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 		log.Debug(pb.OperationID, "GetGroupAllMember userID list", memberUserIDList, "len: ", len(memberUserIDList))
 		var addUidList []string
 		switch pb.MsgData.ContentType {
+		// 被踢用户被动接收踢出通知 axis
 		case constant.MemberKickedNotification:
 			var tips sdk_ws.TipsComm
 			var memberKickedTips sdk_ws.MemberKickedTips
@@ -443,11 +444,13 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 			for _, v := range memberKickedTips.KickedUserList {
 				addUidList = append(addUidList, v.UserID)
 			}
+			// 用户主动发送推出群聊通知 axis
 		case constant.MemberQuitNotification:
 			addUidList = append(addUidList, pb.MsgData.SendID)
 
 		default:
 		}
+		// 因为memberUserIDList开始存放的数据是所有在群成员id，adUidList存放的是因为被踢或者主动退群而不在群的成员id axis
 		if len(addUidList) > 0 {
 			memberUserIDList = append(memberUserIDList, addUidList...)
 		}
@@ -485,6 +488,8 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 		if callbackResp.ErrCode != 0 {
 			log.NewError(pb.OperationID, utils.GetSelfFuncName(), "callbackAfterSendGroupMsg resp: ", callbackResp)
 		}
+		// TODO: 存在的问题，上述流程中只要一批消息发送成功后sendTag即为true，所以sendTag==true无法保证
+		// 所有批次的消息发送成功
 		// 发送成功与否后的处理流程  axis
 		if !sendTag {
 			log.NewWarn(pb.OperationID, "send tag is ", sendTag)
@@ -536,6 +541,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 						log.NewError(conversationReq.OperationID, "ModifyConversationField rpc failed, ", conversationReq.String(), conversationReply.String())
 					}
 					if tag {
+						//@Everyone and @other people
 						conversationReq.UserIDList = utils.DifferenceString(atUserID, memberUserIDList)
 						conversation.GroupAtType = constant.AtAll
 						etcdConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImConversationName, pb.OperationID)
@@ -544,6 +550,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 							log.NewError(pb.OperationID, errMsg)
 							return
 						}
+						// 新建会话 axis
 						client := pbConversation.NewConversationClient(etcdConn)
 						conversationReply, err := client.ModifyConversationField(context.Background(), &conversationReq)
 						if err != nil {
@@ -621,6 +628,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 func (rpc *RpcChat) sendMsgToWriter(m *pbChat.MsgDataToMQ, key string, status string) error {
 	switch status {
 	case constant.OnlineStatus:
+		//如果是视频通话通知,则直接调用push rpc服务推送到对应用户连接的客户端 axis
 		if m.MsgData.ContentType == constant.SignalingNotification {
 			rpcPushMsg := pbPush.PushMsgReq{OperationID: m.OperationID, MsgData: m.MsgData, PushToUserID: key}
 			grpcConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImPushName, m.OperationID)
@@ -678,6 +686,7 @@ func modifyMessageByUserMessageReceiveOpt(userID, sourceID string, sessionType i
 	case constant.NotReceiveMessage:
 		return false
 	case constant.ReceiveNotNotifyMessage:
+		// 不接收通知类型的消息即不开启离线消息通知推送 axis
 		if pb.MsgData.Options == nil {
 			pb.MsgData.Options = make(map[string]bool, 10)
 		}
@@ -710,7 +719,7 @@ func modifyMessageByUserMessageReceiveOpt(userID, sourceID string, sessionType i
 	return true
 }
 
-func modifyMessageByUserMessageReceiveOptoptimization(userID, sourceID string, sessionType int, operationID string, options *map[string]bool) bool {
+func modifyMessageByUserMessageReceiveOptOptimization(userID, sourceID string, sessionType int, operationID string, options *map[string]bool) bool {
 	conversationID := utils.GetConversationIDBySessionType(sourceID, sessionType)
 	opt, err := db.DB.GetSingleConversationRecvMsgOpt(userID, conversationID)
 	if err != nil && err != go_redis.Nil {
@@ -1033,8 +1042,10 @@ func getOnlineAndOfflineUserIDList(memberList []string, m map[string][]string, o
 	req := &pbRelay.GetUsersOnlineStatusReq{}
 	req.UserIDList = memberList
 	req.OperationID = operationID
+	// 这里表明，该函数只能系统管理员才能使用？ axis
 	req.OpUserID = config.Config.Manager.AppManagerUid[0]
 	flag := false
+	// 获取relay【msg gateway】的所有可用rpc服务 axis
 	grpcCons := getcdv3.GetDefaultGatewayConn4Unique(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), operationID)
 	for _, v := range grpcCons {
 		client := pbRelay.NewRelayClient(v)
@@ -1071,6 +1082,7 @@ func getOnlineAndOfflineUserIDList(memberList []string, m map[string][]string, o
 func valueCopy(pb *pbChat.SendMsgReq) *pbChat.SendMsgReq {
 	offlinePushInfo := sdk_ws.OfflinePushInfo{}
 	if pb.MsgData.OfflinePushInfo != nil {
+		// 添加取指针值符号，值复制  axis
 		offlinePushInfo = *pb.MsgData.OfflinePushInfo
 	}
 	msgData := sdk_ws.MsgData{}
@@ -1085,45 +1097,11 @@ func valueCopy(pb *pbChat.SendMsgReq) *pbChat.SendMsgReq {
 	return &pbChat.SendMsgReq{Token: pb.Token, OperationID: pb.OperationID, MsgData: &msgData}
 }
 
-func (rpc *RpcChat) sendMsgToGroup(list []string, pb pbChat.SendMsgReq, status string, sendTag *bool, wg *sync.WaitGroup) {
-	//	log.Debug(pb.OperationID, "split userID ", list)
-	offlinePushInfo := sdk_ws.OfflinePushInfo{}
-	if pb.MsgData.OfflinePushInfo != nil {
-		offlinePushInfo = *pb.MsgData.OfflinePushInfo
-	}
-	msgData := sdk_ws.MsgData{}
-	msgData = *pb.MsgData
-	msgData.OfflinePushInfo = &offlinePushInfo
-
-	groupPB := pbChat.SendMsgReq{Token: pb.Token, OperationID: pb.OperationID, MsgData: &msgData}
-	msgToMQGroup := pbChat.MsgDataToMQ{Token: pb.Token, OperationID: pb.OperationID, MsgData: &msgData}
-	for _, v := range list {
-		options := make(map[string]bool, 10)
-		for key, value := range pb.MsgData.Options {
-			options[key] = value
-		}
-		groupPB.MsgData.RecvID = v
-		groupPB.MsgData.Options = options
-		isSend := modifyMessageByUserMessageReceiveOpt(v, msgData.GroupID, constant.GroupChatType, &groupPB)
-		if isSend {
-			msgToMQGroup.MsgData = groupPB.MsgData
-			//	log.Debug(groupPB.OperationID, "sendMsgToWriter, ", v, groupID, msgToMQGroup.String())
-			err := rpc.sendMsgToWriter(&msgToMQGroup, v, status)
-			if err != nil {
-				log.NewError(msgToMQGroup.OperationID, "kafka send msg err:UserId", v, msgToMQGroup.String())
-			} else {
-				*sendTag = true
-			}
-		} else {
-			log.Debug(groupPB.OperationID, "not sendMsgToWriter, ", v)
-		}
-	}
-	wg.Done()
-}
-
 func (rpc *RpcChat) sendMsgToGroupOptimization(list []string, groupPB *pbChat.SendMsgReq, status string, sendTag *bool, wg *sync.WaitGroup) {
 	msgToMQGroup := pbChat.MsgDataToMQ{Token: groupPB.Token, OperationID: groupPB.OperationID, MsgData: groupPB.MsgData}
 	tempOptions := make(map[string]bool, 1)
+	// TODO: 这个函数的整个处理过程，groupPB.MsgData.Options的值都没有变过，那
+	// 取出后用重新赋值是什么操作。 axis
 	for k, v := range groupPB.MsgData.Options {
 		tempOptions[k] = v
 	}
@@ -1134,6 +1112,7 @@ func (rpc *RpcChat) sendMsgToGroupOptimization(list []string, groupPB *pbChat.Se
 			options[k] = v
 		}
 		groupPB.MsgData.Options = options
+		// 根据消息接收方的用户的消息接收配置，判断是否发送消息 axis
 		isSend := modifyMessageByUserMessageReceiveOpt(v, groupPB.MsgData.GroupID, constant.GroupChatType, groupPB)
 		if isSend {
 			if v == "" || groupPB.MsgData.SendID == "" {

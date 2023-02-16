@@ -12,6 +12,7 @@ import (
 	http2 "net/http"
 )
 
+// CallbackOfflinePush 该回调函数主要用于获取userIDList 的离线用户id数据 axis
 func callbackOfflinePush(operationID string, userIDList []string, msg *commonPb.MsgData, offlinePushUserIDList *[]string) cbApi.CommonCallbackResp {
 	callbackResp := cbApi.CommonCallbackResp{OperationID: operationID}
 	if !config.Config.Callback.CallbackOfflinePush.Enable {
@@ -62,6 +63,7 @@ func callbackOfflinePush(operationID string, userIDList []string, msg *commonPb.
 
 func callbackOnlinePush(operationID string, userIDList []string, msg *commonPb.MsgData) cbApi.CommonCallbackResp {
 	callbackResp := cbApi.CommonCallbackResp{OperationID: operationID}
+	// 自己给自己push消息，不触发回调 axis
 	if !config.Config.Callback.CallbackOnlinePush.Enable || utils.IsContain(msg.SendID, userIDList) {
 		return callbackResp
 	}

@@ -265,7 +265,7 @@ func (d *DataBases) HandleSignalInfo(operationID string, msg *pbCommon.MsgData, 
 		return false, err
 	}
 	//log.NewDebug(pushMsg.OperationID, utils.GetSelfFuncName(), "SignalReq: ", req.String())
-	var inviteeUserIDList []string
+	var inviteeUserIDList []string // 看样子是支持多人视频聊天 axis
 	var isInviteSignal bool
 	switch signalInfo := req.Payload.(type) {
 	case *pbRtc.SignalReq_Invite:
@@ -277,17 +277,19 @@ func (d *DataBases) HandleSignalInfo(operationID string, msg *pbCommon.MsgData, 
 		if !utils.IsContain(pushToUserID, inviteeUserIDList) {
 			return false, nil
 		}
+	// 视频通过处理操作消息不需要离线推送 axis
 	case *pbRtc.SignalReq_HungUp, *pbRtc.SignalReq_Cancel, *pbRtc.SignalReq_Reject, *pbRtc.SignalReq_Accept:
 		return false, errors.New("signalInfo do not need offlinePush")
 	default:
 		log2.NewDebug(operationID, utils.GetSelfFuncName(), "req invalid type", string(msg.Content))
 		return false, nil
 	}
+	// 邀请视频通话请求处理分支 axis
 	if isInviteSignal {
 		log2.NewDebug(operationID, utils.GetSelfFuncName(), "invite userID list:", inviteeUserIDList)
 		for _, userID := range inviteeUserIDList {
 			log2.NewInfo(operationID, utils.GetSelfFuncName(), "invite userID:", userID)
-			timeout, err := strconv.Atoi(config.Config.Rtc.SignalTimeout)
+			timeout, err := strconv.Atoi(config.Config.Rtc.SignalTimeout) // 最长不回应时间 axis
 			if err != nil {
 				return false, err
 			}
@@ -300,6 +302,7 @@ func (d *DataBases) HandleSignalInfo(operationID string, msg *pbCommon.MsgData, 
 			if err != nil {
 				return false, err
 			}
+			// 每遍历一次userID都刷新一次 SIGNAL_CACHE:ClientMsgID缓存 axis
 			key := SignalCache + msg.ClientMsgID
 			err = d.RDB.Set(context.Background(), key, msg.Content, time.Duration(timeout)*time.Second).Err()
 			if err != nil {

@@ -155,7 +155,7 @@ type config struct {
 		OpenImRealTimeCommName string `yaml:"openImRealTimeCommName"`
 	}
 	Etcd struct {
-		EtcdSchema string   `yaml:"etcdSchema"`
+		EtcdSchema string   `yaml:"etcdSchema"` // config.yaml default value is openim
 		EtcdAddr   []string `yaml:"etcdAddr"`
 		UserName   string   `yaml:"userName"`
 		Password   string   `yaml:"password"`

@@ -3,9 +3,11 @@ package callback
 import (
 	"Open_IM/pkg/common/constant"
 	server_api_params "Open_IM/pkg/proto/sdk_ws"
+
 	"github.com/golang/protobuf/proto"
 )
 
+// GetContent 如果是Notification类型消息，则返回的tips.JsonDetail,如果是普通类消息，则直接返回msg.Content axis
 func GetContent(msg *server_api_params.MsgData) string {
 	if msg.ContentType >= constant.NotificationBegin && msg.ContentType <= constant.NotificationEnd {
 		var tips server_api_params.TipsComm

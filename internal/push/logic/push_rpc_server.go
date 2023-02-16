@@ -86,6 +86,7 @@ func (r *RPCServer) PushMsg(_ context.Context, pbData *pbPush.PushMsgReq) (*pbPu
 	default:
 		MsgToUser(pbData)
 	}
+	// TODO:不考虑消息丢失吗？PushMsg函数只是将Websocket中无法推送的消息通过第三方推送服务进行推送而已 axis
 	return &pbPush.PushMsgResp{
 		ResultCode: 0,
 	}, nil

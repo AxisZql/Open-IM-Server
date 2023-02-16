@@ -57,11 +57,11 @@ func initPrometheus() {
 	promePkg.NewMsgOfflinePushFailedCounter()
 }
 
-func Run(promethuesPort int) {
+func Run(prometheusPort int) {
 	go rpcServer.run()
 	go pushCh.pushConsumerGroup.RegisterHandleAndConsumer(&pushCh)
 	go func() {
-		err := promePkg.StartPromeSrv(promethuesPort)
+		err := promePkg.StartPromeSrv(prometheusPort)
 		if err != nil {
 			panic(err)
 		}

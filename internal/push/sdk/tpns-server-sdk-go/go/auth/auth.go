@@ -37,6 +37,7 @@ func (a *Auther) Auth(req *http.Request, useSignAuthored bool, auth Auther, reqB
 }
 
 func makeAuthHeader(appID, secretKey string) string {
+	//TODO: 话说secretKey不是属于密钥级别的？那为什么用base64这种可逆加密算法，不怕被盗号？ axis
 	base64Str := base64.StdEncoding.EncodeToString(
 		[]byte(
 			fmt.Sprintf("%s:%s", appID, secretKey),

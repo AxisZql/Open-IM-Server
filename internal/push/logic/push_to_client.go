@@ -72,6 +72,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 		}
 	}
 	log.NewInfo(pushMsg.OperationID, "push_result", wsResult, "sendData", pushMsg.MsgData)
+	// 推送成功数+1 axis
 	successCount++
 	// 处理离线推送，如果用户离线【也就是app进程不在线】，则采用第三方推送服务推送消息到用户手机通知栏 axis
 	if isOfflinePush && pushMsg.PushToUserID != pushMsg.MsgData.SendID {
@@ -83,6 +84,7 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 		}
 		// 如果是webrtc 信号通知信息 axis
 		if pushMsg.MsgData.ContentType == constant.SignalingNotification {
+			// 判断对应类型的视频通话消息是否进行推送 axis
 			isSend, err := db.DB.HandleSignalInfo(pushMsg.OperationID, pushMsg.MsgData, pushMsg.PushToUserID)
 			if err != nil {
 				log.NewError(pushMsg.OperationID, utils.GetSelfFuncName(), err.Error(), pushMsg.MsgData)
@@ -133,8 +135,10 @@ func MsgToUser(pushMsg *pbPush.PushMsgReq) {
 				a := AtContent{}
 				_ = utils.JsonStringToStruct(string(pushMsg.MsgData.Content), &a)
 				if utils.IsContain(pushMsg.PushToUserID, a.AtUserList) {
+					// 如果接收方在被@表中 axis
 					title = constant.ContentType2PushContent[constant.AtText] + constant.ContentType2PushContent[constant.Common]
 				} else {
+					// 如果不在，则表示一般群聊消息，因为这条消息此时是@他人，此时当前用户收到该@消息会当成普通群聊消息处理 axis
 					title = constant.ContentType2PushContent[constant.GroupMsg]
 				}
 			case constant.SignalingNotification:
