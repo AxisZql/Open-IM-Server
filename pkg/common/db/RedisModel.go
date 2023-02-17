@@ -216,6 +216,7 @@ func (d *DataBases) SetMessageToCache(msgList []*pbChat.MsgDataToMQ, uid string,
 			continue
 		}
 		log2.NewDebug(operationID, "convert string is ", s)
+		// 消息缓存过期时间为24h axis
 		err = pipe.Set(ctx, key, s, time.Duration(config.Config.MsgCacheTimeout)*time.Second).Err()
 		//err = d.rdb.HMSet(context.Background(), "12", map[string]interface{}{"1": 2, "343": false}).Err()
 		if err != nil {

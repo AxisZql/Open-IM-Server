@@ -11,17 +11,18 @@ import (
 	pbPush "Open_IM/pkg/proto/push"
 	"Open_IM/pkg/utils"
 	"context"
-	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
 	"hash/crc32"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Shopify/sarama"
+	"github.com/golang/protobuf/proto"
 )
 
 type MsgChannelValue struct {
 	aggregationID string //maybe userID or super groupID
-	triggerID     string
+	triggerID     string // 其实就是operationId [axis]
 	msgList       []*pbMsg.MsgDataToMQ
 	lastSeq       uint64
 }
@@ -43,12 +44,13 @@ type OnlineHistoryRedisConsumerHandler struct {
 
 func (och *OnlineHistoryRedisConsumerHandler) Init(cmdCh chan Cmd2Value) {
 	och.msgHandle = make(map[string]fcb)
-	och.msgDistributionCh = make(chan Cmd2Value) //no buffer channel
+	och.msgDistributionCh = make(chan Cmd2Value) //no buffer channel，无缓冲消息分发通道 axis
 	go och.MessagesDistributionHandle()
 	for i := 0; i < ChannelNum; i++ {
 		och.chArrays[i] = make(chan Cmd2Value, 50)
 		go och.Run(i)
 	}
+	// 根据配置文件中是否开启可靠性存储来决定不同的操作 axis
 	if config.Config.ReliableStorage {
 		och.msgHandle[config.Config.Kafka.Ws2mschat.Topic] = och.handleChatWs2Mongo
 	} else {
@@ -65,21 +67,24 @@ func (och *OnlineHistoryRedisConsumerHandler) Run(channelID int) {
 		select {
 		case cmd := <-och.chArrays[channelID]:
 			switch cmd.Cmd {
+			// 聚合消息：maybe single message or group message [axis]
 			case AggregationMessages:
 				msgChannelValue := cmd.Value.(MsgChannelValue)
 				msgList := msgChannelValue.msgList
 				triggerID := msgChannelValue.triggerID
-				storageMsgList := make([]*pbMsg.MsgDataToMQ, 0, 80)
-				notStoragePushMsgList := make([]*pbMsg.MsgDataToMQ, 0, 80)
+				storageMsgList := make([]*pbMsg.MsgDataToMQ, 0, 80)        //存储的msg list [axis]
+				notStoragePushMsgList := make([]*pbMsg.MsgDataToMQ, 0, 80) //没有存储的msg list，这些消息可能是通知类的消息，故采取推送的方式发送到对应客户端 axis
 				log.Debug(triggerID, "msg arrived channel", "channel id", channelID, msgList, msgChannelValue.aggregationID, len(msgList))
 				for _, v := range msgList {
 					log.Debug(triggerID, "msg come to storage center", v.String())
-					isHistory := utils.GetSwitchFromOptions(v.MsgData.Options, constant.IsHistory)
+					isHistory := utils.GetSwitchFromOptions(v.MsgData.Options, constant.IsHistory) //表示该消息是否开启历史记录？ axis
 					isSenderSync := utils.GetSwitchFromOptions(v.MsgData.Options, constant.IsSenderSync)
 					if isHistory {
 						storageMsgList = append(storageMsgList, v)
 						//log.NewWarn(triggerID, "storageMsgList to mongodb  client msgID: ", v.MsgData.ClientMsgID)
 					} else {
+						// if isSenderSync==true or msgChannelValue.aggregationID!=v.MsgData.SendID or
+						// isSenderSync=false and msgChannelValue.aggregationID == v.MsgData.SendID,then do! [axis]
 						if !(!isSenderSync && msgChannelValue.aggregationID == v.MsgData.SendID) {
 							notStoragePushMsgList = append(notStoragePushMsgList, v)
 						}
@@ -98,8 +103,10 @@ func (och *OnlineHistoryRedisConsumerHandler) Run(channelID int) {
 				//}
 				log.Debug(triggerID, "msg storage length", len(storageMsgList), "push length", len(notStoragePushMsgList))
 				if len(storageMsgList) > 0 {
+					// 批量写入redis axis
 					err, lastSeq := saveUserChatList(msgChannelValue.aggregationID, storageMsgList, triggerID)
 					if err != nil {
+						// 失败数记录的变更就不要加锁？？？ [axis]
 						singleMsgFailedCount += uint64(len(storageMsgList))
 						log.NewError(triggerID, "single data insert to redis err", err.Error(), storageMsgList)
 					} else {
@@ -111,6 +118,7 @@ func (och *OnlineHistoryRedisConsumerHandler) Run(channelID int) {
 							sendMessageToPushMQ(v, msgChannelValue.aggregationID)
 						}
 						for _, x := range notStoragePushMsgList {
+							// 不存储的消息也写入Kafka的ms2ps_chat中，但是不写入redis中 axis
 							sendMessageToPushMQ(x, msgChannelValue.aggregationID)
 						}
 					}
@@ -125,6 +133,7 @@ func (och *OnlineHistoryRedisConsumerHandler) Run(channelID int) {
 	}
 }
 
+// SendMessageToMongoCH 批量将持久存储的消息写入kafka中的msg_to_mongo topic中
 func (och *OnlineHistoryRedisConsumerHandler) SendMessageToMongoCH(aggregationID string, triggerID string, messages []*pbMsg.MsgDataToMQ, lastSeq uint64) {
 	if len(messages) > 0 {
 		pid, offset, err := producerToMongo.SendMessage(&pbMsg.MsgDataToMongoByMQ{LastSeq: lastSeq, AggregationID: aggregationID, MessageList: messages, TriggerID: triggerID}, aggregationID, triggerID)

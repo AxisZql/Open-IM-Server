@@ -533,6 +533,8 @@ func (d *DataBases) SaveUserChatMongo2(uid string, sendTime int64, m *pbMsg.MsgD
 	err = c.FindOneAndUpdate(ctx, filter, bson.M{"$push": bson.M{"msg": sMsg}}).Err()
 	log.NewWarn(operationID, "get mgoSession cost time", getCurrentTimestampByMill()-newTime)
 	if err != nil {
+		// 此处表示不存在对应消息分组时就新建消息分组 axis
+		// TODO:但是如果不是document不存在而报的错误，而是其他异常时，也这样处理? axis
 		sChat := UserChat{}
 		sChat.UID = seqUid
 		sChat.Msg = append(sChat.Msg, sMsg)

@@ -116,6 +116,7 @@ func (d *DataBases) BatchInsertChat2DB(userID string, msgList []*pbMsg.MsgDataTo
 func (d *DataBases) BatchInsertChat2Cache(insertID string, msgList []*pbMsg.MsgDataToMQ, operationID string) (error, uint64) {
 	newTime := getCurrentTimestampByMill()
 	lenList := len(msgList)
+	// 每次插入的消息数量不能超过每一个分组所能容纳的最大消息数 axis
 	if lenList > GetSingleGocMsgNum() {
 		return errors.New("too large"), 0
 	}
@@ -144,6 +145,7 @@ func (d *DataBases) BatchInsertChat2Cache(insertID string, msgList []*pbMsg.MsgD
 		currentMaxSeq++
 		sMsg := MsgInfo{}
 		sMsg.SendTime = m.MsgData.SendTime
+		// TODO: 所以这里的sMsg变量屁用没有?? axis
 		m.MsgData.Seq = uint32(currentMaxSeq)
 		log.Debug(operationID, "cache msg node ", m.String(), m.MsgData.ClientMsgID, "userID: ", insertID, "seq: ", currentMaxSeq)
 	}

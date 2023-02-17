@@ -7,6 +7,7 @@ import (
 	"Open_IM/pkg/utils"
 )
 
+// saveUserChat 将从Kafka中取出的消息写入mongodb中 axis
 func saveUserChat(uid string, msg *pbMsg.MsgDataToMQ) error {
 	time := utils.GetCurrentTimestampByMill()
 	// 增加对应用户的信箱中的消息偏移量 axis
@@ -23,6 +24,7 @@ func saveUserChat(uid string, msg *pbMsg.MsgDataToMQ) error {
 	//	return db.DB.SaveUserChatMongo2(uid, pbSaveData.MsgData.SendTime, &pbSaveData)
 }
 
+// saveUserChatList 将Kafka中取出的消息利用Pipeline批量写入redis中 axis
 func saveUserChatList(userID string, msgList []*pbMsg.MsgDataToMQ, operationID string) (error, uint64) {
 	log.Info(operationID, utils.GetSelfFuncName(), "args ", userID, len(msgList))
 	//return db.DB.BatchInsertChat(userID, msgList, operationID)
