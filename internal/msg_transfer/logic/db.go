@@ -9,6 +9,7 @@ import (
 
 func saveUserChat(uid string, msg *pbMsg.MsgDataToMQ) error {
 	time := utils.GetCurrentTimestampByMill()
+	// 增加对应用户的信箱中的消息偏移量 axis
 	seq, err := db.DB.IncrUserSeq(uid)
 	if err != nil {
 		log.NewError(msg.OperationID, "data insert to redis err", err.Error(), msg.String())

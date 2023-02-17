@@ -36,7 +36,7 @@ func (j *JPush) SetAlias(cid, alias string) (resp string, err error) {
 func (j *JPush) Push(accounts []string, title, detailContent, operationID string, opts push.PushOpts) (string, error) {
 
 	var pf requestBody.Platform
-	pf.SetAll()
+	pf.SetAll() // 设置全平台 axis
 	var au requestBody.Audience
 	au.SetAlias(accounts)
 	var no requestBody.Notification

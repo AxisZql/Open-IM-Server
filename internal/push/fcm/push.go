@@ -42,7 +42,6 @@ func newFcmClient() *Fcm {
 	fcmMsgClient, err := fcmApp.Messaging(ctx)
 	if err != nil {
 		panic(err.Error())
-		return nil
 	}
 	return &Fcm{FcmMsgCli: fcmMsgClient}
 }
@@ -52,6 +51,7 @@ func (f *Fcm) Push(accounts []string, title, detailContent, operationID string, 
 	allTokens := make(map[string][]string, 0)
 	for _, account := range accounts {
 		var personTokens []string
+		// 支持同一个用户的多终端推送 axis
 		for _, v := range push.PushTerminal {
 			Token, err := db.DB.GetFcmToken(account, v)
 			if err == nil {
@@ -115,6 +115,7 @@ func (f *Fcm) Push(accounts []string, title, detailContent, operationID string, 
 
 	}
 	messageCount := len(messages)
+	// 处理剩余未推送的消息 axis
 	if messageCount > 0 {
 		response, err := f.FcmMsgCli.SendAll(ctx, messages)
 		if err != nil {

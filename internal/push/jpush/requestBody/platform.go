@@ -46,7 +46,7 @@ func (p *Platform) Set(os string) error {
 		p.osArry = append(p.osArry, os)
 		p.Os = p.osArry
 	default:
-		return errors.New("unknow platform")
+		return errors.New("unknown platform")
 	}
 
 	return nil

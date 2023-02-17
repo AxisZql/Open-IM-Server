@@ -209,7 +209,9 @@ func MsgToSuperGroupUser(pushMsg *pbPush.PushMsgReq) {
 	successCount++
 	if isOfflinePush {
 		var onlineSuccessUserIDList []string
+		// 发送者肯定在线 axis
 		onlineSuccessUserIDList = append(onlineSuccessUserIDList, pushMsg.MsgData.SendID)
+		// 过滤出成功发送的用户id axis
 		for _, v := range wsResult {
 			if v.OnlinePush && v.UserID != pushMsg.MsgData.SendID {
 				onlineSuccessUserIDList = append(onlineSuccessUserIDList, v.UserID)
@@ -221,6 +223,7 @@ func MsgToSuperGroupUser(pushMsg *pbPush.PushMsgReq) {
 		if len(onlineFailedUserIDList) > 0 {
 			var offlinePushUserIDList []string
 			var needOfflinePushUserIDList []string
+			// 这里的回调主要是想要从推送失败的用户中筛选出真正需要离线推送的id列表 axis
 			callbackResp := callbackOfflinePush(pushMsg.OperationID, onlineFailedUserIDList, pushMsg.MsgData, &offlinePushUserIDList)
 			log.NewDebug(pushMsg.OperationID, utils.GetSelfFuncName(), "offline callback Resp")
 			if callbackResp.ErrCode != 0 {

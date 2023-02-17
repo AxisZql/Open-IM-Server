@@ -119,7 +119,7 @@ func newGetuiClient() *Getui {
 
 func (g *Getui) Push(userIDList []string, title, detailContent, operationID string, opts push.PushOpts) (resp string, err error) {
 	token, err := db.DB.GetGetuiToken()
-	log.NewDebug(operationID, utils.GetSelfFuncName(), "token：", token)
+	log.NewDebug(operationID, utils.GetSelfFuncName(), "token:", token)
 	if err != nil {
 		log.NewError(operationID, utils.OperationIDGenerator(), "GetGetuiToken failed", err.Error())
 	}
@@ -134,7 +134,7 @@ func (g *Getui) Push(userIDList []string, title, detailContent, operationID stri
 		RequestID: utils.OperationIDGenerator(),
 		Audience: struct {
 			Alias []string `json:"alias"`
-		}{Alias: []string{userIDList[0]}},
+		}{Alias: []string{userIDList[0]}}, // TODO: 只处理一个userid？ axis
 	}
 	pushReq.PushMessage.Notification = Notification{
 		Title:       title,

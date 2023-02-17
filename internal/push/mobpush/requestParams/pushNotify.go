@@ -9,12 +9,10 @@ type PushNotify struct {
 
 func (n *PushNotify) SetPlats(plats []int) {
 	n.Plats = plats
-
 }
 
 func (n *PushNotify) SetIosProduction(iosProduction int) {
 	n.IosProduction = iosProduction
-
 }
 
 func (n *PushNotify) SetContent(content string) {

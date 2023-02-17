@@ -14,6 +14,7 @@ import (
 	pbChat "Open_IM/pkg/proto/msg"
 	pbPush "Open_IM/pkg/proto/push"
 	"Open_IM/pkg/utils"
+
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
 )
@@ -21,13 +22,14 @@ import (
 type fcb func(msg []byte)
 
 type PushConsumerHandler struct {
-	msgHandle         map[string]fcb
+	msgHandle         map[string]fcb // key 对应kafka中不同的topic，msgHandle记录的是不同topic的消息的处理方式 axis
 	pushConsumerGroup *kfk.MConsumerGroup
 }
 
 func (ms *PushConsumerHandler) Init() {
 	ms.msgHandle = make(map[string]fcb)
 	ms.msgHandle[config.Config.Kafka.Ms2pschat.Topic] = ms.handleMs2PsChat
+	// kafka 消费组有msgToTransfer,msgToMongo,msgToMySQL,msgToPush
 	ms.pushConsumerGroup = kfk.NewMConsumerGroup(&kfk.MConsumerGroupConfig{KafkaVersion: sarama.V2_0_0_0,
 		OffsetsInitial: sarama.OffsetNewest, IsReturnErr: false}, []string{config.Config.Kafka.Ms2pschat.Topic}, config.Config.Kafka.Ms2pschat.Addr,
 		config.Config.Kafka.ConsumerGroupID.MsgToPush)
@@ -46,6 +48,7 @@ func (ms *PushConsumerHandler) handleMs2PsChat(msg []byte) {
 	}
 	sec := msgFromMQ.MsgData.SendTime / 1000
 	nowSec := utils.GetCurrentTimestampBySecond()
+	// TODO: MsgData.SendTime超过10秒则不推送？？？？这是因为要把他当成离线消息处理，然后放到mongodb中？？？ axis
 	if nowSec-sec > 10 {
 		return
 	}
@@ -60,8 +63,7 @@ func (ms *PushConsumerHandler) handleMs2PsChat(msg []byte) {
 }
 func (PushConsumerHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
 func (PushConsumerHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
-func (ms *PushConsumerHandler) ConsumeClaim(sess sarama.ConsumerGroupSession,
-	claim sarama.ConsumerGroupClaim) error {
+func (ms *PushConsumerHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
 		log.NewDebug("", "kafka get info to mysql", "msgTopic", msg.Topic, "msgPartition", msg.Partition, "msg", string(msg.Value))
 		ms.msgHandle[msg.Topic](msg.Value)

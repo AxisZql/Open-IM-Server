@@ -52,8 +52,8 @@ type AtTextContent struct {
 }
 
 type CreateGroupSysMsg struct {
-	uIdCreator     string                `creatorUid`
-	initMemberList []groupMemberFullInfo `json: initMemberList`
+	IdCreator      string                `json:"creatorUid"`
+	InitMemberList []groupMemberFullInfo `json:"initMemberList"`
 	CreateTime     uint64                `json:"CreateTime"`
 	Text           string                `json:"text"`
 }

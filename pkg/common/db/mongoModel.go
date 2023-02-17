@@ -521,6 +521,7 @@ func (d *DataBases) SaveUserChatMongo2(uid string, sendTime int64, m *pbMsg.MsgD
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	newTime := getCurrentTimestampByMill()
 	operationID := ""
+	// 根据seq来划分当前消息应该存放再哪个文档的消息组中 axis
 	seqUid := getSeqUid(uid, m.MsgData.Seq)
 	filter := bson.M{"uid": seqUid}
 	var err error
