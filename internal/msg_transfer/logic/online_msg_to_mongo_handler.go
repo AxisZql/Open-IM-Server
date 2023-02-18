@@ -9,6 +9,7 @@ import (
 	pbMsg "Open_IM/pkg/proto/msg"
 	server_api_params "Open_IM/pkg/proto/sdk_ws"
 	"Open_IM/pkg/utils"
+
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
 )
@@ -26,6 +27,8 @@ func (och *OnlineHistoryMongoConsumerHandler) Init() {
 		config.Config.Kafka.Ws2mschat.Addr, config.Config.Kafka.ConsumerGroupID.MsgToMongo)
 
 }
+
+// handleChatWs2Mongo 将从kafka中读取出的消息写入mongodb，并从redis中删除相应的消息缓存 axis
 func (mc *OnlineHistoryMongoConsumerHandler) handleChatWs2Mongo(cMsg *sarama.ConsumerMessage, msgKey string, _ sarama.ConsumerGroupSession) {
 	msg := cMsg.Value
 	msgFromMQ := pbMsg.MsgDataToMongoByMQ{}
@@ -35,10 +38,12 @@ func (mc *OnlineHistoryMongoConsumerHandler) handleChatWs2Mongo(cMsg *sarama.Con
 		return
 	}
 	log.Info(msgFromMQ.TriggerID, "BatchInsertChat2DB userID: ", msgFromMQ.AggregationID, "msgFromMQ.LastSeq: ", msgFromMQ.LastSeq)
+	// 将消息批量插入mongodb对应的消息分组中 axis
 	err = db.DB.BatchInsertChat2DB(msgFromMQ.AggregationID, msgFromMQ.MessageList, msgFromMQ.TriggerID, msgFromMQ.LastSeq)
 	if err != nil {
 		log.NewError(msgFromMQ.TriggerID, "single data insert to mongo err", err.Error(), msgFromMQ.MessageList, msgFromMQ.AggregationID, msgFromMQ.TriggerID)
 	} else {
+		// 插入成功后就将对应消息从redis的MESSAGE_CACHE:uid_msg.MsgData.Seq缓存中删除掉 axis
 		err = db.DB.DeleteMessageFromCache(msgFromMQ.MessageList, msgFromMQ.AggregationID, msgFromMQ.GetTriggerID())
 		if err != nil {
 			log.NewError(msgFromMQ.TriggerID, "remove cache msg from redis  err", err.Error(), msgFromMQ.MessageList, msgFromMQ.AggregationID, msgFromMQ.TriggerID)
@@ -61,7 +66,6 @@ func (mc *OnlineHistoryMongoConsumerHandler) handleChatWs2Mongo(cMsg *sarama.Con
 			if unexistSeqList, err := db.DB.DelMsgBySeqList(DeleteMessageTips.UserID, DeleteMessageTips.SeqList, v.OperationID); err != nil {
 				log.NewError(v.OperationID, utils.GetSelfFuncName(), "DelMsgBySeqList args: ", DeleteMessageTips.UserID, DeleteMessageTips.SeqList, v.OperationID, err.Error(), unexistSeqList)
 			}
-
 		}
 	}
 }
@@ -75,6 +79,7 @@ func (och *OnlineHistoryMongoConsumerHandler) ConsumeClaim(sess sarama.ConsumerG
 	for msg := range claim.Messages() {
 		log.NewDebug("", "kafka get info to mongo", "msgTopic", msg.Topic, "msgPartition", msg.Partition, "msg", string(msg.Value), "key", string(msg.Key))
 		if len(msg.Value) != 0 {
+			// 读出的消息马上交给对应topic的消息处理函数处理，此时消息的默认处理函数为handleChatWs2Mongo  [axis]
 			och.msgHandle[msg.Topic](msg, string(msg.Key), sess)
 		} else {
 			log.Error("", "mongo msg get from kafka but is nil", msg.Key)

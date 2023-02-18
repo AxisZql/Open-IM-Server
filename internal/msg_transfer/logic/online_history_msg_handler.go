@@ -36,7 +36,7 @@ type Cmd2Value struct {
 	Value interface{}
 }
 type OnlineHistoryRedisConsumerHandler struct {
-	msgHandle            map[string]fcb
+	msgHandle            map[string]fcb //已经弃用，改为通过chArrays和msgDistributionCh通道来处理从kafka中读取出来的消息 axis
 	historyConsumerGroup *kfk.MConsumerGroup
 	chArrays             [ChannelNum]chan Cmd2Value
 	msgDistributionCh    chan Cmd2Value
@@ -45,7 +45,8 @@ type OnlineHistoryRedisConsumerHandler struct {
 func (och *OnlineHistoryRedisConsumerHandler) Init(cmdCh chan Cmd2Value) {
 	och.msgHandle = make(map[string]fcb)
 	och.msgDistributionCh = make(chan Cmd2Value) //no buffer channel，无缓冲消息分发通道 axis
-	go och.MessagesDistributionHandle()
+	go och.MessagesDistributionHandle()          // 将msgDistributionCh无缓冲管道中的消息根据消息对象id取hash值取模后均匀写入chArrays对应的
+	// 有缓冲channel中 axis
 	for i := 0; i < ChannelNum; i++ {
 		och.chArrays[i] = make(chan Cmd2Value, 50)
 		go och.Run(i)
@@ -198,7 +199,7 @@ func (och *OnlineHistoryRedisConsumerHandler) MessagesDistributionHandle() {
 			switch cmd.Cmd {
 			case ConsumerMsgs:
 				triggerChannelValue := cmd.Value.(TriggerChannelValue)
-				triggerID := triggerChannelValue.triggerID
+				triggerID := triggerChannelValue.triggerID // 即所谓的operationId axis
 				consumerMessages := triggerChannelValue.cmsgList
 				//Aggregation map[userid]message list
 				log.Debug(triggerID, "batch messages come to distribution center", len(consumerMessages))
@@ -232,10 +233,9 @@ func (och *OnlineHistoryRedisConsumerHandler) MessagesDistributionHandle() {
 				}
 			}
 		}
-
 	}
-
 }
+
 func (mc *OnlineHistoryRedisConsumerHandler) handleChatWs2Mongo(cMsg *sarama.ConsumerMessage, msgKey string, sess sarama.ConsumerGroupSession) {
 	msg := cMsg.Value
 	now := time.Now()
@@ -269,6 +269,7 @@ func (mc *OnlineHistoryRedisConsumerHandler) handleChatWs2Mongo(cMsg *sarama.Con
 		}
 		if !isSenderSync && msgKey == msgFromMQ.MsgData.SendID {
 		} else {
+			// 类似通知类型的消息，不需要持久化存储的 axis
 			go sendMessageToPush(&msgFromMQ, msgKey)
 		}
 		log.NewDebug(operationID, "saveSingleMsg cost time ", time.Since(now))
@@ -308,6 +309,7 @@ func (mc *OnlineHistoryRedisConsumerHandler) handleChatWs2Mongo(cMsg *sarama.Con
 	log.NewDebug(msgFromMQ.OperationID, "msg_transfer handle topic data to database success...", msgFromMQ.String())
 }
 
+// handleChatWs2MongoLowReliability 消费消息但是不写入mongodb等任何存储 axis
 func (och *OnlineHistoryRedisConsumerHandler) handleChatWs2MongoLowReliability(cMsg *sarama.ConsumerMessage, msgKey string, sess sarama.ConsumerGroupSession) {
 	msg := cMsg.Value
 	msgFromMQ := pbMsg.MsgDataToMQ{}
@@ -368,6 +370,7 @@ func (OnlineHistoryRedisConsumerHandler) Cleanup(_ sarama.ConsumerGroupSession) 
 //	return nil
 //}
 
+// ConsumeClaim 从kafka中消费消息并写入och.msgDistributionCh  无缓冲channel axis
 func (och *OnlineHistoryRedisConsumerHandler) ConsumeClaim(sess sarama.ConsumerGroupSession,
 	claim sarama.ConsumerGroupClaim) error { // a instance in the consumer group
 
@@ -530,6 +533,7 @@ func sendMessageToPush(message *pbMsg.MsgDataToMQ, pushToUserID string) {
 	grpcConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImPushName, message.OperationID)
 	if grpcConn != nil {
 		log.Error(rpcPushMsg.OperationID, "rpc dial failed", "push data", rpcPushMsg.String())
+		// push失败则重新写入Kafka中 axis
 		pid, offset, err := producer.SendMessage(&mqPushMsg, mqPushMsg.PushToUserID, rpcPushMsg.OperationID)
 		if err != nil {
 			log.Error(mqPushMsg.OperationID, "kafka send failed", "send data", message.String(), "pid", pid, "offset", offset, "err", err.Error())

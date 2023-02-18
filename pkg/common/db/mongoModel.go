@@ -100,7 +100,7 @@ func (d *DataBases) DelMsgBySeqList(userID string, seqList []uint32, operationID
 	suffixUserID2SubSeqList := func(uid string, seqList []uint32) map[string][]uint32 {
 		t := make(map[string][]uint32)
 		for i := 0; i < len(seqList); i++ {
-			seqUid := getSeqUid(uid, seqList[i])
+			seqUid := getSeqUid(uid, seqList[i]) // 计算消息组编号 axis
 			if value, ok := t[seqUid]; !ok {
 				var temp []uint32
 				t[seqUid] = append(temp, seqList[i])
@@ -166,8 +166,8 @@ func (d *DataBases) DelMsgLogic(uid string, seqList []uint32, operationID string
 
 func (d *DataBases) ReplaceMsgByIndex(suffixUserID string, msg *open_im_sdk.MsgData, operationID string, seqIndex int) error {
 	log.NewInfo(operationID, utils.GetSelfFuncName(), suffixUserID, *msg)
-	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
-	defer cancle()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancel()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	s := fmt.Sprintf("msg.%d.msg", seqIndex)
 	log.NewDebug(operationID, utils.GetSelfFuncName(), seqIndex, s)
@@ -188,8 +188,8 @@ func (d *DataBases) ReplaceMsgByIndex(suffixUserID string, msg *open_im_sdk.MsgD
 
 func (d *DataBases) ReplaceMsgBySeq(uid string, msg *open_im_sdk.MsgData, operationID string) error {
 	log.NewInfo(operationID, utils.GetSelfFuncName(), uid, *msg)
-	ctx, cancle := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
-	defer cancle()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
+	defer cancel()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	uid = getSeqUid(uid, msg.Seq)
 	seqIndex := getMsgIndex(msg.Seq)

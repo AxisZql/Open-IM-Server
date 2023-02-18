@@ -9,6 +9,7 @@ import (
 	"Open_IM/pkg/utils"
 	"context"
 	"errors"
+
 	go_redis "github.com/go-redis/redis/v8"
 	"github.com/golang/protobuf/proto"
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,13 +23,15 @@ func (d *DataBases) BatchInsertChat2DB(userID string, msgList []*pbMsg.MsgDataTo
 	}
 	isInit := false
 	var remain uint64
+	// blk0=5000-1
 	blk0 := uint64(GetSingleGocMsgNum() - 1)
 	//currentMaxSeq 4998
 	if currentMaxSeq < uint64(GetSingleGocMsgNum()) {
-		remain = blk0 - currentMaxSeq //1
+		remain = blk0 - currentMaxSeq //如果currentMaxSeq < 5000则表示，该消息存放对象存储的消息数还未足一个组的数量 axis
 	} else {
 		excludeBlk0 := currentMaxSeq - blk0 //=1
 		//(5000-1)%5000 == 4999
+		// 计算出已存在消息组，其中空位可以存放消息的数量 axis
 		remain = (uint64(GetSingleGocMsgNum()) - (excludeBlk0 % uint64(GetSingleGocMsgNum()))) % uint64(GetSingleGocMsgNum())
 	}
 	//remain=1
@@ -51,17 +54,19 @@ func (d *DataBases) BatchInsertChat2DB(userID string, msgList []*pbMsg.MsgDataTo
 		}
 		if isInit {
 			msgListToMongoNext = append(msgListToMongoNext, sMsg)
-			seqUidNext = getSeqUid(userID, uint32(currentMaxSeq))
+			seqUidNext = getSeqUid(userID, uint32(currentMaxSeq)) //计算当前消息批次所属的消息组组号 axis
 			log.Debug(operationID, "msgListToMongoNext ", seqUidNext, m.MsgData.Seq, m.MsgData.ClientMsgID, insertCounter, remain)
 			continue
 		}
 		if insertCounter < remain {
+			// 插入之前消息组空位的数据 axis
 			msgListToMongo = append(msgListToMongo, sMsg)
 			insertCounter++
 			seqUid = getSeqUid(userID, uint32(currentMaxSeq))
 			log.Debug(operationID, "msgListToMongo ", seqUid, m.MsgData.Seq, m.MsgData.ClientMsgID, insertCounter, remain, "userID: ", userID)
 		} else {
-			msgListToMongoNext = append(msgListToMongoNext, sMsg)
+			// 插入新建消息组的数据 axis
+			msgListToMongoNext = append(msgListToMongoNext, sMsg) // 记录下一批次要写入的消息 axis
 			seqUidNext = getSeqUid(userID, uint32(currentMaxSeq))
 			log.Debug(operationID, "msgListToMongoNext ", seqUidNext, m.MsgData.Seq, m.MsgData.ClientMsgID, insertCounter, remain, "userID: ", userID)
 		}
