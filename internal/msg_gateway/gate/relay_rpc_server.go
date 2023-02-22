@@ -36,6 +36,7 @@ type RPCServer struct {
 
 func initPrometheus() {
 	promePkg.NewMsgRecvTotalCounter()
+	// 统计获取最新序列号的次数 axis
 	promePkg.NewGetNewestSeqTotalCounter()
 	promePkg.NewPullMsgBySeqListTotalCounter()
 	promePkg.NewMsgOnlinePushSuccessCounter()

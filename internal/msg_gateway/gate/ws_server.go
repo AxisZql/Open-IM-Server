@@ -46,13 +46,13 @@ type WServer struct {
 
 func (ws *WServer) onInit(wsPort int) {
 	ws.wsAddr = ":" + utils.IntToString(wsPort)
-	ws.wsMaxConnNum = config.Config.LongConnSvr.WebsocketMaxConnNum
+	ws.wsMaxConnNum = config.Config.LongConnSvr.WebsocketMaxConnNum // 单个relay层服务支持1w个websocket连接 axis
 	ws.wsConnToUser = make(map[*UserConn]map[int]string)
 	ws.wsUserToConn = make(map[string]map[int]*UserConn)
 	ws.wsUpGrader = &websocket.Upgrader{
-		HandshakeTimeout: time.Duration(config.Config.LongConnSvr.WebsocketTimeOut) * time.Second,
-		ReadBufferSize:   config.Config.LongConnSvr.WebsocketMaxMsgLen,
-		CheckOrigin:      func(r *http.Request) bool { return true },
+		HandshakeTimeout: time.Duration(config.Config.LongConnSvr.WebsocketTimeOut) * time.Second, //握手超时时间默认10s axis
+		ReadBufferSize:   config.Config.LongConnSvr.WebsocketMaxMsgLen,                            // 缓冲区大小默认 4096 axis
+		CheckOrigin:      func(r *http.Request) bool { return true },                              // 跳过跨域检测 axis
 	}
 }
 
@@ -73,6 +73,7 @@ func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
 		operationID = utils.OperationIDGenerator()
 	}
 	log.Debug(operationID, utils.GetSelfFuncName(), " args: ", query)
+	// 进行身份认证
 	if ws.headerCheck(w, r, operationID) {
 		conn, err := ws.wsUpGrader.Upgrade(w, r, nil) //Conn is obtained through the upgraded escalator
 		if err != nil {
@@ -81,6 +82,7 @@ func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var isCompress = false
 			if r.Header.Get("compression") == "gzip" {
+				// sendID 是要求创建websocket连接请求的用户id axis
 				log.NewDebug(operationID, query["sendID"][0], "enable compression")
 				isCompress = true
 			}
@@ -163,7 +165,14 @@ func (ws *WServer) MultiTerminalLoginRemoteChecker(userID string, platformID int
 	grpcCons := getcdv3.GetDefaultGatewayConn4Unique(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), operationID)
 	log.NewInfo(operationID, utils.GetSelfFuncName(), "args  grpcCons: ", userID, platformID, grpcCons)
 	for _, v := range grpcCons {
+		// TODO: v.Target()有可能在grpc的go sdk的后续版本中被删除 axis
+		/*
+			Target returns the target string of the ClientConn.
+			Experimental
+			Notice: This API is EXPERIMENTAL and may be changed or removed in a later release.
+		*/
 		if v.Target() == rpcSvr.target {
+			// 跳过当前relay服务 axis
 			log.Debug(operationID, "Filter out this node ", rpcSvr.target)
 			continue
 		}
@@ -329,6 +338,7 @@ func (ws *WServer) addUserConn(uid string, platformID int, conn *UserConn, token
 	if callbackResp.ErrCode != 0 {
 		log.NewError(operationID, utils.GetSelfFuncName(), "callbackUserOnline resp:", callbackResp)
 	}
+	// 多终端登录检测 axis
 	go ws.MultiTerminalLoginRemoteChecker(uid, int32(platformID), token, operationID)
 	ws.MultiTerminalLoginChecker(uid, platformID, conn, token, operationID)
 	if oldConnMap, ok := ws.wsUserToConn[uid]; ok {
@@ -432,6 +442,8 @@ func (ws *WServer) getUserAllCons(uid string) map[int]*UserConn {
 //		}
 //		return "", 0
 //	}
+
+// headerCheck 用来处理websocket连接创建前的身份认证操作 axis
 func (ws *WServer) headerCheck(w http.ResponseWriter, r *http.Request, operationID string) bool {
 	status := http.StatusUnauthorized
 	query := r.URL.Query()
@@ -443,6 +455,7 @@ func (ws *WServer) headerCheck(w http.ResponseWriter, r *http.Request, operation
 			if errors.Is(err, constant.ErrTokenInvalid) {
 				status = int(constant.ErrTokenInvalid.ErrCode)
 			}
+			// token 格式错误 axis
 			if errors.Is(err, constant.ErrTokenMalformed) {
 				status = int(constant.ErrTokenMalformed.ErrCode)
 			}
@@ -452,9 +465,11 @@ func (ws *WServer) headerCheck(w http.ResponseWriter, r *http.Request, operation
 			if errors.Is(err, constant.ErrTokenUnknown) {
 				status = int(constant.ErrTokenUnknown.ErrCode)
 			}
+			// 当前平台的登录已经被踢下线，类似WeChat在App端退出PC端的登录 axiszql@e.gzhu.edu.cn
 			if errors.Is(err, constant.ErrTokenKicked) {
 				status = int(constant.ErrTokenKicked.ErrCode)
 			}
+			// 当前token不属于当前platform axis
 			if errors.Is(err, constant.ErrTokenDifferentPlatformID) {
 				status = int(constant.ErrTokenDifferentPlatformID.ErrCode)
 			}

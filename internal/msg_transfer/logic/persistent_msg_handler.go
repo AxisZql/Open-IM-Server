@@ -63,6 +63,7 @@ func (pc *PersistentConsumerHandler) handleChatWs2Mysql(cMsg *sarama.ConsumerMes
 	if isPersist {
 		switch msgFromMQ.MsgData.SessionType {
 		case constant.SingleChatType, constant.NotificationChatType:
+			// 判断对应信息是否属于对应信箱 axis
 			if msgKey == msgFromMQ.MsgData.RecvID {
 				tag = true
 			}
