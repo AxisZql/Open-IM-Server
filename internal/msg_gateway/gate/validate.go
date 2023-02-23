@@ -84,6 +84,7 @@ func (ws *WServer) argsValidate(m *Req, r int32, operationID string) (isPass boo
 		}
 		return true, 0, "", data
 	case constant.WSSendSignalMsg:
+		// video message request param check [axis]
 		data := pbRtc.SignalReq{}
 		if err := proto.Unmarshal(m.Data, &data); err != nil {
 			log.Error(operationID, "Decode Data struct  err", err.Error(), r)
@@ -96,6 +97,7 @@ func (ws *WServer) argsValidate(m *Req, r int32, operationID string) (isPass boo
 		}
 		return true, 0, "", &data
 	case constant.WSPullMsgBySeqList:
+		// client pull message by msg seq id list [axis]
 		data := open_im_sdk.PullMessageBySeqListReq{}
 		if err := proto.Unmarshal(m.Data, &data); err != nil {
 			log.Error(operationID, "Decode Data struct  err", err.Error(), r)

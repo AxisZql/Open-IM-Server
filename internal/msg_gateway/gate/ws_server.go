@@ -40,7 +40,7 @@ type WServer struct {
 	wsAddr       string
 	wsMaxConnNum int
 	wsUpGrader   *websocket.Upgrader
-	wsConnToUser map[*UserConn]map[int]string
+	wsConnToUser map[*UserConn]map[int]string // conn -> [platformID->userid]
 	wsUserToConn map[string]map[int]*UserConn // userid->platformID->websocket instance [axis]
 }
 
@@ -73,7 +73,7 @@ func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
 		operationID = utils.OperationIDGenerator()
 	}
 	log.Debug(operationID, utils.GetSelfFuncName(), " args: ", query)
-	// 进行身份认证
+	// 进行身份认证 axis
 	if ws.headerCheck(w, r, operationID) {
 		conn, err := ws.wsUpGrader.Upgrade(w, r, nil) //Conn is obtained through the upgraded escalator
 		if err != nil {
@@ -88,6 +88,7 @@ func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			newConn := &UserConn{conn, new(sync.Mutex), utils.StringToInt32(query["platformID"][0]), 0, isCompress, query["sendID"][0]}
 			userCount++
+			// record current websocket conn to map and quit some illegal conn base on multi terminal mutex setting [axis]
 			ws.addUserConn(query["sendID"][0], utils.StringToInt(query["platformID"][0]), newConn, query["token"][0], operationID)
 			go ws.readMsg(newConn)
 		}
@@ -98,6 +99,7 @@ func (ws *WServer) wsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (ws *WServer) readMsg(conn *UserConn) {
 	for {
+		// close conn where ReadMessage appear error [axis]
 		messageType, msg, err := conn.ReadMessage()
 		if messageType == websocket.PingMessage {
 			log.NewInfo("", "this is a  pingMessage")
@@ -105,9 +107,10 @@ func (ws *WServer) readMsg(conn *UserConn) {
 		if err != nil {
 			log.NewWarn("", "WS ReadMsg error ", " userIP", conn.RemoteAddr().String(), "userUid", "platform", "error", err.Error())
 			userCount--
-			ws.delUserConn(conn)
+			ws.delUserConn(conn) // del current conn from map [axis]
 			return
 		}
+		// decompression message if the message enable the compression [axis]
 		if conn.IsCompress {
 			buff := bytes.NewBuffer(msg)
 			reader, err := gzip.NewReader(buff)
@@ -164,6 +167,7 @@ func (ws *WServer) SetWriteTimeoutWriteMsg(conn *UserConn, a int, msg []byte, ti
 func (ws *WServer) MultiTerminalLoginRemoteChecker(userID string, platformID int32, token string, operationID string) {
 	grpcCons := getcdv3.GetDefaultGatewayConn4Unique(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), operationID)
 	log.NewInfo(operationID, utils.GetSelfFuncName(), "args  grpcCons: ", userID, platformID, grpcCons)
+	// traverse all relay rpc server check multi terminal login by websocket connection [axis]
 	for _, v := range grpcCons {
 		// TODO: v.Target()有可能在grpc的go sdk的后续版本中被删除 axis
 		/*
@@ -180,6 +184,7 @@ func (ws *WServer) MultiTerminalLoginRemoteChecker(userID string, platformID int
 		client := pbRelay.NewRelayClient(v)
 		req := &pbRelay.MultiTerminalLoginCheckReq{OperationID: operationID, PlatformID: platformID, UserID: userID, Token: token}
 		log.NewInfo(operationID, "MultiTerminalLoginCheckReq ", client, req.String())
+		// the truth is relay rpc server's MultiTerminalLoginCheck eventually call MultiTerminalLoginCheckerWithLock of WServer [axis]
 		resp, err := client.MultiTerminalLoginCheck(context.Background(), req)
 		if err != nil {
 			log.Error(operationID, "MultiTerminalLoginCheck failed ", err.Error())
@@ -193,16 +198,20 @@ func (ws *WServer) MultiTerminalLoginRemoteChecker(userID string, platformID int
 	}
 }
 
+// MultiTerminalLoginCheckWithLock   quit the corresponding conn base on the multi terminal mutex setting of config.yaml.  [axis]
 func (ws *WServer) MultiTerminalLoginCheckerWithLock(uid string, platformID int, token string, operationID string) {
 	rwLock.Lock()
 	defer rwLock.Unlock()
 	log.NewInfo(operationID, utils.GetSelfFuncName(), " rpc args: ", uid, platformID, token)
 	switch config.Config.MultiLoginPolicy {
 	case constant.PCAndOther:
+		// TODO: 但是相同平台不同的终端的websocket连接记录在哪，WServer只记录平台到唯一websocket连接的映射 axis
+		// PC terminal can be online at the same time,but other terminal only one of the endpoints can be login [axis]
 		if constant.PlatformNameToClass(constant.PlatformIDToName(platformID)) == constant.TerminalPC {
 			return
 		}
 		fallthrough
+		// the default setting of config.yaml [axis]
 	case constant.AllLoginButSameTermKick:
 		if oldConnMap, ok := ws.wsUserToConn[uid]; ok { // user->map[platform->conn]
 			if oldConn, ok := oldConnMap[platformID]; ok {
@@ -218,19 +227,20 @@ func (ws *WServer) MultiTerminalLoginCheckerWithLock(uid string, platformID int,
 				}
 				log.NewDebug(operationID, "get token map is ", m, uid, constant.PlatformIDToName(platformID))
 
-				for k, _ := range m {
+				for k := range m {
 					if k != token {
+						// flag the same old terminal to kicked [axis]
 						m[k] = constant.KickedToken
 					}
 				}
 				log.NewDebug(operationID, "set token map is ", m, uid, constant.PlatformIDToName(platformID))
-				err = db.DB.SetTokenMapByUidPid(uid, platformID, m)
+				err = db.DB.SetTokenMapByUidPid(uid, platformID, m) // 在redis缓冲中更新写入当前旧终端的在线状态 axis
 				if err != nil {
 					log.NewError(operationID, "SetTokenMapByUidPid err", err.Error(), uid, platformID, m)
 					return
 				}
-				err = oldConn.Close()
-				delete(oldConnMap, platformID)
+				err = oldConn.Close()          // server active disconnect [axis]
+				delete(oldConnMap, platformID) //删除被踢终端的连接 axis
 				ws.wsUserToConn[uid] = oldConnMap
 				if len(oldConnMap) == 0 {
 					delete(ws.wsUserToConn, uid)
@@ -240,6 +250,7 @@ func (ws *WServer) MultiTerminalLoginCheckerWithLock(uid string, platformID int,
 					log.NewError(operationID, "conn close err", err.Error(), uid, platformID)
 				}
 			} else {
+				// TODO: 这里不是恰好说明了，当前用户恰好不在对应终端上登录而已吗？ 为什么这种情况是abnormal ？？？ axis
 				log.NewWarn(operationID, "abnormal uid-conn  ", uid, platformID, oldConnMap[platformID])
 			}
 
@@ -262,7 +273,7 @@ func (ws *WServer) MultiTerminalLoginChecker(uid string, platformID int, newConn
 		if oldConnMap, ok := ws.wsUserToConn[uid]; ok { // user->map[platform->conn]
 			if oldConn, ok := oldConnMap[platformID]; ok {
 				log.NewDebug(operationID, uid, platformID, "kick old conn")
-				ws.sendKickMsg(oldConn)
+				ws.sendKickMsg(oldConn) // send notice msg to quit old terminal conn [axis]
 				m, err := db.DB.GetTokenMapByUidPid(uid, constant.PlatformIDToName(platformID))
 				if err != nil && err != go_redis.Nil {
 					log.NewError(operationID, "get token from redis err", err.Error(), uid, constant.PlatformIDToName(platformID))
@@ -274,7 +285,7 @@ func (ws *WServer) MultiTerminalLoginChecker(uid string, platformID int, newConn
 				}
 				log.NewDebug(operationID, "get token map is ", m, uid, constant.PlatformIDToName(platformID))
 
-				for k, _ := range m {
+				for k := range m {
 					if k != token {
 						m[k] = constant.KickedToken
 					}
@@ -338,9 +349,9 @@ func (ws *WServer) addUserConn(uid string, platformID int, conn *UserConn, token
 	if callbackResp.ErrCode != 0 {
 		log.NewError(operationID, utils.GetSelfFuncName(), "callbackUserOnline resp:", callbackResp)
 	}
-	// 多终端登录检测 axis
+	// 多终端登录检测 axis. quit some illegal conn by relay rpc server
 	go ws.MultiTerminalLoginRemoteChecker(uid, int32(platformID), token, operationID)
-	ws.MultiTerminalLoginChecker(uid, platformID, conn, token, operationID)
+	ws.MultiTerminalLoginChecker(uid, platformID, conn, token, operationID) // quit some illegal conn and send kicked msg to corresponding client [axis]
 	if oldConnMap, ok := ws.wsUserToConn[uid]; ok {
 		oldConnMap[platformID] = conn
 		ws.wsUserToConn[uid] = oldConnMap
@@ -367,6 +378,7 @@ func (ws *WServer) addUserConn(uid string, platformID int, conn *UserConn, token
 	log.Debug(operationID, "WS Add operation", "", "wsUser added", ws.wsUserToConn, "connection_uid", uid, "connection_platform", constant.PlatformIDToName(platformID), "online_user_num", len(ws.wsUserToConn), "online_conn_num", count)
 }
 
+// delUserConn del current user's conn that on the same platform. [axis]
 func (ws *WServer) delUserConn(conn *UserConn) {
 	rwLock.Lock()
 	defer rwLock.Unlock()

@@ -15,10 +15,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
-	"github.com/golang/protobuf/proto"
-	"github.com/gorilla/websocket"
 	"runtime"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
 )
 
 func (ws *WServer) msgParse(conn *UserConn, binaryMsg []byte) {
@@ -34,6 +35,7 @@ func (ws *WServer) msgParse(conn *UserConn, binaryMsg []byte) {
 		}
 		return
 	}
+	// verify that all fields whether meet the requirements of the tag [axis]
 	if err := validate.Struct(m); err != nil {
 		log.NewError("", "ws args validate  err", err.Error())
 		ws.sendErrMsg(conn, 201, err.Error(), m.ReqIdentifier, m.MsgIncr, m.OperationID)
@@ -46,6 +48,7 @@ func (ws *WServer) msgParse(conn *UserConn, binaryMsg []byte) {
 			return
 		}
 	}
+	// deal various operation by websocket request message [axis]
 	switch m.ReqIdentifier {
 	case constant.WSGetNewestSeq:
 		log.NewInfo(m.OperationID, "getSeqReq ", m.SendID, m.MsgIncr, m.ReqIdentifier)
@@ -71,6 +74,7 @@ func (ws *WServer) msgParse(conn *UserConn, binaryMsg []byte) {
 	log.NewInfo(m.OperationID, "goroutine num is ", runtime.NumGoroutine())
 }
 
+// getSeqReq get user min and max msg seq. get group max msg seq and get user on group min msg seq [axis]
 func (ws *WServer) getSeqReq(conn *UserConn, m *Req) {
 	log.NewInfo(m.OperationID, "Ws call success to getNewSeq", m.MsgIncr, m.SendID, m.ReqIdentifier)
 	nReply := new(sdk_ws.GetMaxAndMinSeqResp)
@@ -92,6 +96,7 @@ func (ws *WServer) getSeqReq(conn *UserConn, m *Req) {
 			return
 		}
 		msgClient := pbChat.NewMsgClient(grpcConn)
+		// get user min and max msg seq. get group max msg seq and get user on group min msg seq [axis]
 		rpcReply, err := msgClient.GetMaxAndMinSeq(context.Background(), &rpcReq)
 		if err != nil {
 			nReply.ErrCode = 500
@@ -110,6 +115,7 @@ func (ws *WServer) getSeqReq(conn *UserConn, m *Req) {
 	}
 }
 
+// getSeqResp  structural response message [axis]
 func (ws *WServer) getSeqResp(conn *UserConn, m *Req, pb *sdk_ws.GetMaxAndMinSeqResp) {
 
 	b, _ := proto.Marshal(pb)
