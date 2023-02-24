@@ -27,21 +27,18 @@ func IsLimitLoginIp(LoginIp string) (bool, error) {
 }
 
 func IsLimitUserLoginIp(userID string, loginIp string) (limit bool, err error) {
-	//如果已经存在则放行
+	//如果已经存在则放行,不存在记录则不允许通过，因为限定再特定ip登录 【ip白名单】【axis】
 	var count int64
 	result := db.DB.MysqlDB.DefaultGormDB().Table("user_ip_limits").Where("user_id=?", userID).Count(&count)
 	if err := result.Error; err != nil {
-		return true, err
-	}
-	if count < 1 {
-		return false, nil
+		return true, err // err or not found record [axis]
 	}
 	result = db.DB.MysqlDB.DefaultGormDB().Table("user_ip_limits").Where("user_id=? and ip = ?", userID, loginIp).Count(&count)
 	if err := result.Error; err != nil {
 		return true, err
 	}
-
-	return count > 0, nil
+	// count<=0 true:lock，count>0 false:unlock [axis]
+	return count <= 0, nil
 }
 
 func QueryIPLimits(ip string) (*db.IpLimit, error) {
@@ -93,7 +90,7 @@ func InsertIpRecord(userID, createIp string) error {
 	return err
 }
 
-func UpdateIpReocord(userID, ip string) (err error) {
+func UpdateIpRecord(userID, ip string) (err error) {
 	record := &db.UserIpRecord{UserID: userID, LastLoginIp: ip, LastLoginTime: time.Now()}
 	result := db.DB.MysqlDB.DefaultGormDB().Model(&db.UserIpRecord{}).Where("user_id=?", userID).Updates(record).Update("login_times", gorm.Expr("login_times+?", 1))
 	if result.Error != nil {

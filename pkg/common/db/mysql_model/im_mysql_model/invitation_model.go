@@ -44,10 +44,10 @@ func BatchCreateInvitationCodes(CodeNums int, CodeLen int) ([]string, error) {
 func CheckInvitationCode(code string) error {
 	var invitationCode db.Invitation
 	err := db.DB.MysqlDB.DefaultGormDB().Table("invitations").Where("invitation_code=?", code).Take(&invitationCode).Error
-	if err != nil {
+	if err != nil && !errors.Is(gorm.ErrRecordNotFound, err) {
 		return err
 	}
-	if invitationCode.InvitationCode != code {
+	if invitationCode.InvitationCode == "" {
 		return errors.New("邀请码不存在")
 	}
 	if invitationCode.Status != 0 {
@@ -60,6 +60,7 @@ func CheckInvitationCode(code string) error {
  * 尝试加锁模式解决邀请码抢占的问题
  */
 func TryLockInvitationCode(Code string, UserID string) bool {
+	// TODO: 加锁？怎么个加法？利用MySQL的事务？axis
 	Data := make(map[string]interface{}, 0)
 	Data["user_id"] = UserID
 	Data["status"] = 1

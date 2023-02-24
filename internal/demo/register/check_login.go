@@ -32,7 +32,9 @@ func CheckLoginLimit(c *gin.Context) {
 		ip = c.ClientIP()
 	}
 	log.NewDebug(req.OperationID, utils.GetSelfFuncName(), "IP: ", ip)
-	user, err := imdb.GetUserIPLimit(req.UserID)
+	// TODO: IP limit check. this data belong hot data that cache in redis maybe better . [axis]
+	// TODO: 这步查询个人感觉没必要 axis
+	user, err := imdb.GetUserIPLimit(req.UserID) // 差user_ip_lists表，该表是记录对应用户只能再对应ip下登录的规则表 axis
 	if err != nil && !errors.Is(gorm.ErrRecordNotFound, err) {
 		errMsg := req.OperationID + " imdb.GetUserByUserID failed " + err.Error() + req.UserID
 		log.NewError(req.OperationID, errMsg)
@@ -40,7 +42,8 @@ func CheckLoginLimit(c *gin.Context) {
 		return
 	}
 
-	if err := imdb.UpdateIpReocord(req.UserID, ip); err != nil {
+	// insert or update current user ip information.[axis]
+	if err := imdb.UpdateIpRecord(req.UserID, ip); err != nil {
 		log.NewError(req.OperationID, err.Error(), req.UserID, ip)
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": constant.ErrDB.ErrCode, "errMsg": err.Error()})
 		return
@@ -49,6 +52,7 @@ func CheckLoginLimit(c *gin.Context) {
 	var Limited bool
 	var LimitError error
 	// 指定账户指定ip才能登录
+	// TODO:可能该接口只用于检测管理员登录时的ip，故此类指定ip登录的操作类似微信公众平台的ip白名单功能 axis
 	Limited, LimitError = imdb.IsLimitUserLoginIp(user.UserID, ip)
 	if LimitError != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), LimitError, ip)
