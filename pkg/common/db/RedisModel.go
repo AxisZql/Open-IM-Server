@@ -178,6 +178,8 @@ func (d *DataBases) GetUserGlobalMsgRecvOpt(userID string) (int, error) {
 	}
 	return utils.StringToInt(result), err
 }
+
+// GetMessageListBySeq this method's userID param can be userID or groupID. [axis]
 func (d *DataBases) GetMessageListBySeq(userID string, seqList []uint32, operationID string) (seqMsg []*pbCommon.MsgData, failedSeqList []uint32, errResult error) {
 	for _, v := range seqList {
 		//MESSAGE_CACHE:169.254.225.224_reliability1653387820_0_1

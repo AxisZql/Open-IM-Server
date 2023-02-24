@@ -60,10 +60,11 @@ func (ws *WServer) msgParse(conn *UserConn, binaryMsg []byte) {
 		promePkg.PromeInc(promePkg.MsgRecvTotalCounter)
 	case constant.WSSendSignalMsg:
 		log.NewInfo(m.OperationID, "sendSignalMsgReq ", m.SendID, m.MsgIncr, m.ReqIdentifier)
+		// WebRTC 建立连接的消息 [axis]
 		ws.sendSignalMsgReq(conn, &m)
 	case constant.WSPullMsgBySeqList:
 		log.NewInfo(m.OperationID, "pullMsgBySeqListReq ", m.SendID, m.MsgIncr, m.ReqIdentifier)
-		ws.pullMsgBySeqListReq(conn, &m)
+		ws.pullMsgBySeqListReq(conn, &m) // pull message by seqID [axis]
 		promePkg.PromeInc(promePkg.PullMsgBySeqListTotalCounter)
 	case constant.WsLogoutMsg:
 		log.NewInfo(m.OperationID, "conn.Close()", m.SendID, m.MsgIncr, m.ReqIdentifier)
@@ -153,6 +154,7 @@ func (ws *WServer) pullMsgBySeqListReq(conn *UserConn, m *Req) {
 			return
 		}
 		msgClient := pbChat.NewMsgClient(grpcConn)
+		// pull message by seqID List from msg rpc service. [axis]
 		reply, err := msgClient.PullMessageBySeqList(context.Background(), &rpcReq)
 		if err != nil {
 			log.NewError(rpcReq.OperationID, "pullMsgBySeqListReq err", err.Error())
@@ -298,6 +300,7 @@ func (ws *WServer) sendSignalMsgReq(conn *UserConn, m *Req) {
 			SignalReq:   pData.(*pbRtc.SignalReq),
 			OperationID: m.OperationID,
 		}
+		 // send message by msg rpc server after get WebRTC assembly message from realTimeComm rpc server. [axis]
 		respPb, err := rtcClient.SignalMessageAssemble(context.Background(), req)
 		if err != nil {
 			log.NewError(m.OperationID, utils.GetSelfFuncName(), "SignalMessageAssemble", err.Error(), config.Config.RpcRegisterName.OpenImRealTimeCommName)
@@ -391,7 +394,7 @@ func SetTokenKicked(userID string, platformID int, operationID string) {
 		log.Error(operationID, "GetTokenMapByUidPid failed ", err.Error(), userID, constant.PlatformIDToName(platformID))
 		return
 	}
-	for k, _ := range m {
+	for k := range m {
 		m[k] = constant.KickedToken
 	}
 	err = db.DB.SetTokenMapByUidPid(userID, platformID, m)

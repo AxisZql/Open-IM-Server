@@ -30,7 +30,7 @@ type RPCServer struct {
 	etcdSchema      string
 	etcdAddr        []string
 	platformList    []int
-	pushTerminal    []int
+	pushTerminal    []int // only support ios and android mobile terminal.[axis]
 	target          string
 }
 
@@ -144,6 +144,8 @@ func (r *RPCServer) OnlinePushMsg(_ context.Context, in *pbRelay.OnlinePushMsgRe
 		Resp: resp,
 	}, nil
 }
+
+// GetUserOnlineStatus only the app manager can use this method. [axis]
 func (r *RPCServer) GetUsersOnlineStatus(_ context.Context, req *pbRelay.GetUsersOnlineStatusReq) (*pbRelay.GetUsersOnlineStatusResp, error) {
 	log.NewInfo(req.OperationID, "rpc GetUsersOnlineStatus arrived server", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) {
@@ -180,7 +182,7 @@ func (r *RPCServer) SuperGroupOnlineBatchPushOneMsg(_ context.Context, req *pbRe
 	//r.GetBatchMsgForPush(req.OperationID,req.MsgData,req.PushToUserIDList,)
 	msgBytes, _ := proto.Marshal(req.MsgData)
 	mReply := Resp{
-		ReqIdentifier: constant.WSPushMsg, // websocket 推送？ axis
+		ReqIdentifier: constant.WSPushMsg, // websocket 推送 axis
 		OperationID:   req.OperationID,
 		Data:          msgBytes,
 	}
@@ -232,7 +234,7 @@ func (r *RPCServer) OnlineBatchPushOneMsg(_ context.Context, req *pbRelay.Online
 		}
 		userConnMap := ws.getUserAllCons(v)
 		var platformList []int
-		for k, _ := range userConnMap {
+		for k := range userConnMap {
 			platformList = append(platformList, k)
 		}
 		log.Debug(req.OperationID, "GetSingleUserMsgForPushPlatforms begin", req.MsgData.Seq, v, platformList, req.MsgData.String())

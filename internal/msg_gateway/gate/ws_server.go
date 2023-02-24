@@ -129,6 +129,7 @@ func (ws *WServer) readMsg(conn *UserConn) {
 			}
 		}
 		log.NewDebug("", "size", utils.ByteSize(uint64(len(msg))))
+		// parse message that read from websocket connection and call right rpc service to deal message [axis]
 		ws.msgParse(conn, msg)
 	}
 }
