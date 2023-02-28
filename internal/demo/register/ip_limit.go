@@ -35,7 +35,7 @@ func QueryIPRegister(c *gin.Context) {
 		return
 	}
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req:", req)
-	userIDList, err := imdb.GetRegisterUserNum(req.IP)
+	userIDList, err := imdb.GetRegisterUserNum(req.IP) // get the register user num of same ip. [axis]
 	if err != nil {
 		log.NewError(req.OperationID, "GetInvitationCode failed", req.IP)
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": constant.ErrDB.ErrCode, "errMsg": "GetRegisterUserNum error!"})
@@ -138,6 +138,7 @@ func QueryUserIDLimitLogin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": constant.ErrDB.ErrCode, "errMsg": "GetIpLimitsByUserID error!"})
 		return
 	}
+	// TODO: 啥玩意data和limit？axis
 	if len(resp) > 0 {
 		log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "resp:", resp)
 		c.JSON(http.StatusOK, gin.H{"errCode": 0, "errMsg": "", "data": resp})
@@ -164,6 +165,7 @@ func AddUserIPLimitLogin(c *gin.Context) {
 	}
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "req:", req)
 	userIp := db.UserIpLimit{UserID: req.UserID, Ip: req.IP}
+	// the following action does not make sense. [axis]
 	err := imdb.UpdateUserInfo(db.User{
 		UserID: req.UserID,
 		// LoginLimit: 1,
@@ -212,6 +214,7 @@ func RemoveUserIPLimitLogin(c *gin.Context) {
 		return
 	}
 	if len(ips) == 0 {
+		// TODO: db.User struct does not have login_limit field! [axis]
 		err := imdb.UpdateUserInfoByMap(db.User{
 			UserID: req.UserID,
 		}, map[string]interface{}{"login_limit": 0})

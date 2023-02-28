@@ -62,6 +62,7 @@ func onboardingProcess(operationID, userID, userName, faceURL, phoneNumber, emai
 		joinDepartmentIDList = config.Config.Demo.JoinDepartmentIDList
 	}
 	if config.Config.Demo.CreateOrganizationUserAndJoinDepartment && len(joinDepartmentIDList) > 0 {
+		// cerate the user in current organization.  axis
 		if err := createOrganizationUser(operationID, userID, userName, phoneNumber, email); err != nil {
 			log.NewError(operationID, utils.GetSelfFuncName(), "createOrganizationUser failed", err.Error())
 		}
@@ -105,7 +106,7 @@ func createOrganizationUser(operationID, userID, userName, phoneNumber, email st
 		OrganizationUser: &commonPb.OrganizationUser{
 			UserID:      userID,
 			Nickname:    userName,
-			EnglishName: randomEnglishName(),
+			EnglishName: randomEnglishName(), // TODO: fuck you random English name .axis
 			Gender:      constant.Male,
 			CreateTime:  uint32(time.Now().Unix()),
 			Telephone:   phoneNumber,
@@ -185,7 +186,8 @@ func GetDepartmentGroupIDList(operationID, departmentID string) ([]string, error
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), resp)
 		return nil, errors.New(resp.ErrMsg)
 	}
-
+	// the logic here is those people who in the sub department must be join the parent department
+	// relate group. axis
 	resp.ParentIDList = append(resp.ParentIDList, departmentID)
 	getDepartmentRelatedGroupIDListReq := organizationRpc.GetDepartmentRelatedGroupIDListReq{OperationID: operationID, DepartmentIDList: resp.ParentIDList}
 	getDepartmentParentIDListResp, err := client.GetDepartmentRelatedGroupIDList(context.Background(), &getDepartmentRelatedGroupIDListReq)

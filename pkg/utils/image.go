@@ -41,7 +41,7 @@ func scale(in io.Reader, out io.Writer, width, height, quality int) error {
 
 	switch fm {
 	case "jpeg":
-		return jpeg.Encode(out, canvas, &jpeg.Options{quality})
+		return jpeg.Encode(out, canvas, &jpeg.Options{Quality: quality})
 	case "png":
 		return png.Encode(out, canvas)
 	case "gif":

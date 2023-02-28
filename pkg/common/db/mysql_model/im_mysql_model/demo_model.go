@@ -9,6 +9,7 @@ import (
 
 func GetRegister(account, areaCode, userID string) (*db.Register, error) {
 	var r db.Register
+	// TODO: why have tow account =? [axis]
 	return &r, db.DB.MysqlDB.DefaultGormDB().Table("registers").Where("user_id = ? and user_id != ? or account = ? or account =? and area_code=?",
 		userID, "", account, account, areaCode).Take(&r).Error
 }
