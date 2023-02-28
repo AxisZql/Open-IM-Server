@@ -17,10 +17,12 @@ func init() {
 	ChImportFriend = make(chan *pbFriend.ImportFriendReq, 1000)
 }
 
+// ImportFriendRoutine 的目的是让对应用户都register_add_friend表中存在的用户为好友 axis
 func ImportFriendRoutine() {
 	for {
 		req := <-ChImportFriend
 		go func() {
+			// 获取register_add_friend表中的全部数据 axis
 			friendUserIDList, err := imdb.GetRegisterAddFriendList(0, 0)
 			if err != nil {
 				log.NewError(req.OperationID, utils.GetSelfFuncName(), req, err.Error())

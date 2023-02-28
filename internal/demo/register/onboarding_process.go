@@ -79,12 +79,13 @@ func onboardingProcess(operationID, userID, userName, faceURL, phoneNumber, emai
 			if err != nil {
 				log.NewError(operationID, utils.GetSelfFuncName(), err.Error())
 			}
-			log.Debug(operationID, utils.GetSelfFuncName(), "getjoinGroupIDListdepartmentID", groupIDList)
+			log.Debug(operationID, utils.GetSelfFuncName(), "getjoinGroupIDListDepartmentID", groupIDList)
 			joinGroups(operationID, userID, userName, faceURL, groupIDList)
 			log.NewInfo(operationID, utils.GetSelfFuncName(), "fineshed")
 		}
 	}
 
+	// 企业oa系统相关通知 axis
 	if config.Config.Demo.OaNotification {
 		oaNotification(operationID, userID)
 	}

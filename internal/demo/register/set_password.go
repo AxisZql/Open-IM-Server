@@ -37,6 +37,7 @@ type ParamsSetPassword struct {
 	Birth            int32  `json:"birth"`
 }
 
+// 相当于注册新账号 axis
 func SetPassword(c *gin.Context) {
 	params := ParamsSetPassword{}
 	if err := c.BindJSON(&params); err != nil {
@@ -52,6 +53,7 @@ func SetPassword(c *gin.Context) {
 
 	ok, opUserID, _ := token_verify.GetUserIDFromToken(c.Request.Header.Get("token"), params.OperationID)
 	if !ok || !utils.IsContain(opUserID, config.Config.Manager.AppManagerUid) {
+		// 不是管理员账号，则判断其登录ip是否受限 axis
 		Limited, LimitError := imdb.IsLimitRegisterIp(ip)
 		if LimitError != nil {
 			log.Error(params.OperationID, utils.GetSelfFuncName(), LimitError, ip)
@@ -160,6 +162,7 @@ func SetPassword(c *gin.Context) {
 	// demo onboarding
 	if params.UserID == "" && config.Config.Demo.OnboardProcess {
 		select {
+			// 开启注册流程
 		case Ch <- OnboardingProcessReq{
 			OperationID: params.OperationID,
 			UserID:      userID,

@@ -38,6 +38,7 @@ func ResetPassword(account, password string) error {
 	return db.DB.MysqlDB.DefaultGormDB().Table("registers").Where("account = ?", account).Updates(&r).Error
 }
 
+// GetRegisterAddFriendList showNumber==0时全量返回register_add_friend表的数据 axis
 func GetRegisterAddFriendList(showNumber, pageNumber int32) ([]string, error) {
 	var IDList []string
 	var err error

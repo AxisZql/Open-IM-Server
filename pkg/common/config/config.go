@@ -504,7 +504,7 @@ type config struct {
 			Enable                       bool   `yaml:"enable"`
 		}
 		SuperCode    string `yaml:"superCode"`
-		CodeTTL      int    `yaml:"codeTTL"`
+		CodeTTL      int    `yaml:"codeTTL"` //验证码有效时间 default 60s
 		UseSuperCode bool   `yaml:"useSuperCode"`
 		Mail         struct {
 			Title                   string `yaml:"title"`

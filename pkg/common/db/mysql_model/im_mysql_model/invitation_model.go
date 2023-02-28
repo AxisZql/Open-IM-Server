@@ -38,6 +38,8 @@ func BatchCreateInvitationCodes(CodeNums int, CodeLen int) ([]string, error) {
 	return codes, nil
 }
 
+// 验证码status状态的变更，初始status=0，被使用后status=1，使用完毕status=2
+
 /**
  * 检查邀请码
  */

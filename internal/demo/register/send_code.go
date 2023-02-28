@@ -82,6 +82,7 @@ func SendVerificationCode(c *gin.Context) {
 				return
 			}
 		}
+		// TODO: 这里设置了重复发送验证码条件验证 axis
 		accountKey = accountKey + "_" + constant.VerificationCodeForRegisterSuffix
 		ok, err := db.DB.JudgeAccountEXISTS(accountKey)
 		if ok || err != nil {
@@ -109,6 +110,7 @@ func SendVerificationCode(c *gin.Context) {
 		return
 	}
 	log.NewDebug(params.OperationID, config.Config.Demo)
+	// 优先通过邮箱发送axis
 	if params.Email != "" {
 		m := gomail.NewMessage()
 		m.SetHeader(`From`, config.Config.Demo.Mail.SenderMail)
