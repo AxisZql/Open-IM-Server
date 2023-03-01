@@ -50,5 +50,4 @@ func NewTencentSMS() (*TencentSMS, error) {
 	}
 	a.client = client
 	return &a, nil
-
 }
