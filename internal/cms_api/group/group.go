@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetGroups 根据群聊id获取群聊信息或者根据群聊名模糊搜索获取群聊信息.[axis]
 func GetGroups(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetGroupsRequest
@@ -61,6 +62,7 @@ func GetGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg, "data": resp})
 }
 
+// GetGroupMembers 按照username模糊搜索群成员信息. [axis]
 func GetGroupMembers(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetGroupMembersRequest

@@ -25,6 +25,7 @@ var (
 	minioClient *minio.Client
 )
 
+// 进行Minio对象存储服务客户端的初始化 axis
 func init() {
 	log.NewPrivateLog(constant.LogFileName)
 	operationID := utils.OperationIDGenerator()
@@ -93,6 +94,7 @@ func AdminLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg, "data": resp})
 }
 
+// AddUserRegisterAddFriendIDList 设置新用户注册成功后需要统一加的好友id列表.[axis]
 func AddUserRegisterAddFriendIDList(c *gin.Context) {
 	var (
 		req apiStruct.AddUserRegisterAddFriendIDListRequest
@@ -122,6 +124,7 @@ func AddUserRegisterAddFriendIDList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg})
 }
 
+// ReduceUserRegisterAddFriendIDList 按照userid列表删除对应比较好友中的相关数据. [axis]
 func ReduceUserRegisterAddFriendIDList(c *gin.Context) {
 	var (
 		req apiStruct.ReduceUserRegisterAddFriendIDListRequest
@@ -150,6 +153,7 @@ func ReduceUserRegisterAddFriendIDList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg})
 }
 
+// GetUserRegisterAddFriendIDList 分页获取注册后必加好友的详细信息列表. [axis]
 func GetUserRegisterAddFriendIDList(c *gin.Context) {
 	var (
 		req  apiStruct.GetUserRegisterAddFriendIDListRequest

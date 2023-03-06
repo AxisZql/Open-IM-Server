@@ -7,11 +7,12 @@ import (
 	"Open_IM/pkg/common/log"
 	server_api_params "Open_IM/pkg/proto/sdk_ws"
 	"Open_IM/pkg/utils"
-	goRedis "github.com/go-redis/redis/v8"
-	"github.com/golang/protobuf/proto"
 	"math"
 	"strconv"
 	"strings"
+
+	goRedis "github.com/go-redis/redis/v8"
+	"github.com/golang/protobuf/proto"
 )
 
 const oldestList = 0
@@ -19,6 +20,7 @@ const newestList = -1
 
 func ResetUserGroupMinSeq(operationID, groupID string, userIDList []string) error {
 	var delStruct delMsgRecursionStruct
+	// 递归删除群聊中过期的消息，并且返回min seq. [axis]
 	minSeq, err := deleteMongoMsg(operationID, groupID, oldestList, &delStruct)
 	if err != nil {
 		log.NewError(operationID, utils.GetSelfFuncName(), groupID, "deleteMongoMsg failed")
@@ -34,19 +36,24 @@ func ResetUserGroupMinSeq(operationID, groupID string, userIDList []string) erro
 			continue
 		}
 		if userMinSeq > uint64(minSeq) {
+			// TODO:话说，seq 在redis的是没有过期时间的，这里有必要重新更新吗？？[axis]
 			err = db.DB.SetGroupUserMinSeq(groupID, userID, userMinSeq)
 		} else {
+			// 重新设置群聊+用户的min seq
 			err = db.DB.SetGroupUserMinSeq(groupID, userID, uint64(minSeq))
 		}
 		if err != nil {
 			log.NewError(operationID, utils.GetSelfFuncName(), err.Error(), groupID, userID, userMinSeq, minSeq)
 		}
 	}
-	return nil
+	// note: 源码中没有修改GROUP_MIN_SEQ:groupId中缓存的值，add code by axis
+	err = db.DB.SetGroupMinSeq(groupID, minSeq)
+	return utils.Wrap(err, "")
 }
 
 func DeleteMongoMsgAndResetRedisSeq(operationID, userID string) error {
 	var delStruct delMsgRecursionStruct
+	// 递归删除超过维护期的消息，并返回最小有效的seq编号 [axis]
 	minSeq, err := deleteMongoMsg(operationID, userID, oldestList, &delStruct)
 	if err != nil {
 		return utils.Wrap(err, "")
@@ -55,6 +62,7 @@ func DeleteMongoMsgAndResetRedisSeq(operationID, userID string) error {
 		return nil
 	}
 	log.NewDebug(operationID, utils.GetSelfFuncName(), "delMsgIDMap: ", delStruct, "minSeq", minSeq)
+	// 重新将当前用户的min seq写入redis中 [axis]
 	err = db.DB.SetUserMinSeq(userID, minSeq)
 	return utils.Wrap(err, "")
 }
@@ -95,6 +103,7 @@ func deleteMongoMsg(operationID string, ID string, index int64, delStruct *delMs
 			}
 		}
 		// 获取报错，或者获取不到了，物理删除并且返回seq
+		// this function will be call with zero value delStruct param by DeleteMongoMsgAndResetRedisSeq. [axis]
 		err = delMongoMsgsPhysical(delStruct.delUidList)
 		if err != nil {
 			return 0, err
@@ -103,10 +112,13 @@ func deleteMongoMsg(operationID string, ID string, index int64, delStruct *delMs
 	}
 	log.NewDebug(operationID, "ID:", ID, "index:", index, "uid:", msgs.UID, "len:", len(msgs.Msg))
 	if len(msgs.Msg) > db.GetSingleGocMsgNum() {
+		// from the code logic,this step will not be performed because the size of each message group
+		// in mongoDB is less than or equal to db.GetSingleGocMsgNum().[axis]
 		log.NewWarn(operationID, utils.GetSelfFuncName(), "msgs too large", len(msgs.Msg), msgs.UID)
 	}
 	for i, msg := range msgs.Msg {
 		// 找到列表中不需要删除的消息了, 表示为递归到最后一个块
+		// 不需要删除的消息：即没有超过维护时间期限的消息 axis
 		if utils.GetCurrentTimestampByMill() < msg.SendTime+(int64(config.Config.Mongo.DBRetainChatRecords)*24*60*60*1000) {
 			log.NewDebug(operationID, ID, "find uid", msgs.UID)
 			// 删除块失败 递归结束 返回0
@@ -126,7 +138,7 @@ func deleteMongoMsg(operationID string, ID string, index int64, delStruct *delMs
 					return delStruct.getSetMinSeq(), utils.Wrap(err, "")
 				}
 			}
-			// 递归结束
+			// 递归结束，minSeq
 			return msgPb.Seq, nil
 		}
 	}
@@ -138,6 +150,7 @@ func deleteMongoMsg(operationID string, ID string, index int64, delStruct *delMs
 		return 0, utils.Wrap(err, "proto.Unmarshal failed")
 	}
 	delStruct.minSeq = lastMsgPb.Seq
+	// 判断当前置空的消息组是否是一个满消息组，如果是，置空后则将该消息组加入待删除列表中 axis
 	if msgListIsFull(msgs) {
 		delStruct.delUidList = append(delStruct.delUidList, msgs.UID)
 	}
@@ -177,6 +190,7 @@ func checkMaxSeqWithMongo(operationID, ID string, diffusionType int) error {
 		}
 		return utils.Wrap(err, "GetUserMaxSeq failed")
 	}
+	// 根据id从mongodb中获取最新一条消息. [axis]
 	msg, err := db.DB.GetNewestMsg(ID)
 	if err != nil {
 		return utils.Wrap(err, "GetNewestMsg failed")
@@ -191,6 +205,8 @@ func checkMaxSeqWithMongo(operationID, ID string, diffusionType int) error {
 		return utils.Wrap(err, "")
 	}
 	seqMongo = msgPb.Seq
+
+	// mongodb 和redis之间的max seq只之差不能超过10。 [axis]
 	if math.Abs(float64(seqMongo-uint32(seqRedis))) > 10 {
 		log.NewWarn(operationID, utils.GetSelfFuncName(), seqMongo, seqRedis, "redis maxSeq is different with msg.Seq > 10", ID, diffusionType)
 	} else {

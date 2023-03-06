@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetUserFriends 通过好友的userid准确搜索或者通过好友名称模糊搜索.[axis]
 func GetUserFriends(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetFriendsReq

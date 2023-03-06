@@ -45,6 +45,7 @@ func GetChatLogCount(chatLog db.ChatLog) (int64, error) {
 		db = db.Where("send_time > ? and send_time < ?", chatLog.SendTime, chatLog.SendTime.AddDate(0, 0, 1))
 	}
 	if chatLog.Content != "" {
+		// TODO: 消息搜索如果数据量比较大可能需要elasticsearch进行搜索.[axis]
 		db = db.Where(" content like ? ", fmt.Sprintf("%%%s%%", chatLog.Content))
 	}
 	if chatLog.SessionType == 1 {

@@ -60,6 +60,8 @@ type FriendUser struct {
 }
 
 func GetUserFriendsCMS(ownerUserID, friendUserName string, pageNumber, showNumber int32) (friendUserList []*FriendUser, count int64, err error) {
+	// TODO: 用户名模糊搜索，先限定范围后指定偏移量，最后才是搜索，
+	// 这样不会导致有对应用户名的用户但是搜索不出来的情况吗？ [axis]
 	db := db.DB.MysqlDB.DefaultGormDB().Table("friends").
 		Select("friends.*, users.name").
 		Where("friends.owner_user_id=?", ownerUserID).Limit(int(showNumber)).

@@ -253,7 +253,10 @@ func (s *adminCMSServer) GetChatLogs(_ context.Context, req *pbAdminCMS.GetChatL
 				log.NewError(req.OperationID, utils.GetSelfFuncName(), "GetUserByUserID failed", err.Error())
 				continue
 			}
-			pbChatLog.SenderNickname = recvUser.Nickname
+			// note: origin code is :
+			// pbChatLog.SenderNickname = recvUser.Nickname
+			pbChatLog.RecvID = recvUser.UserID         // code by axis
+			pbChatLog.RecvNickname = recvUser.Nickname // code by axis
 
 		case constant.GroupChatType, constant.SuperGroupChatType:
 			group, err := imdb.GetGroupInfoByGroupID(chatLog.RecvID)

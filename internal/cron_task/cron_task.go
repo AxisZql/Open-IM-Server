@@ -8,8 +8,9 @@ import (
 	"Open_IM/pkg/common/log"
 	"Open_IM/pkg/utils"
 	"fmt"
-	"github.com/robfig/cron/v3"
 	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 const cronTaskOperationID = "cronTaskOperationID-"
@@ -38,7 +39,7 @@ func StartCronTask() {
 		} else {
 			log.NewError(operationID, utils.GetSelfFuncName(), err.Error())
 		}
-		return
+		// return
 		// working group msg clear
 		workingGroupIDList, err := im_mysql_model.GetGroupIDListByGroupType(constant.WorkingGroup)
 		if err == nil {

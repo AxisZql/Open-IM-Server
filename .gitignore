@@ -6,6 +6,7 @@ logs
 out-test
 .github
 .idea
+.vscode
 
 
 deploy/open_im_demo
