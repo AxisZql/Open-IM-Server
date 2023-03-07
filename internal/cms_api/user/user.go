@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AddUser 主动添加用户，userid是客户端必传的参数.[axis]
 func AddUser(c *gin.Context) {
 	var (
 		req   cms_api_struct.AddUserRequest
@@ -46,6 +47,7 @@ func AddUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg})
 }
 
+// BlockUser 设置对应用户的封禁时长. [axis]
 func BlockUser(c *gin.Context) {
 	var (
 		req   cms_api_struct.BlockUserRequest
@@ -108,6 +110,7 @@ func UnblockUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg})
 }
 
+// GetBlockUser api only support get block list by page,but rpc service provide the other method of get block user by userid.
 func GetBlockUsers(c *gin.Context) {
 	var (
 		req    cms_api_struct.GetBlockUsersRequest
@@ -160,6 +163,7 @@ func GetBlockUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg, "data": resp})
 }
 
+// GetUserIDByEmailAndPhoneNumber get userid list by email or phone number. [axis]
 func GetUserIDByEmailAndPhoneNumber(c *gin.Context) {
 	var (
 		req    cms_api_struct.GetUserIDByEmailAndPhoneNumberRequest

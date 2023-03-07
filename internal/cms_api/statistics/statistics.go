@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetMessageStatistics 获取单聊和群聊在指定时间跨度的消息产生数分析. [axis]
 func GetMessagesStatistics(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetMessageStatisticsRequest
@@ -51,8 +52,8 @@ func GetMessagesStatistics(c *gin.Context) {
 	resp.PrivateMessageNum = int(respPb.PrivateMessageNum)
 	for _, v := range respPb.PrivateMessageNumList {
 		resp.PrivateMessageNumList = append(resp.PrivateMessageNumList, struct {
-			Date       string "json:\"date\""
-			MessageNum int    "json:\"messageNum\""
+			Date       string `json:"date"`
+			MessageNum int    `json:"messageNum"`
 		}{
 			Date:       v.Date,
 			MessageNum: int(v.Num),
@@ -60,8 +61,8 @@ func GetMessagesStatistics(c *gin.Context) {
 	}
 	for _, v := range respPb.GroupMessageNumList {
 		resp.GroupMessageNumList = append(resp.GroupMessageNumList, struct {
-			Date       string "json:\"date\""
-			MessageNum int    "json:\"messageNum\""
+			Date       string `json:"date"`
+			MessageNum int    `json:"messageNum"`
 		}{
 			Date:       v.Date,
 			MessageNum: int(v.Num),
@@ -71,6 +72,7 @@ func GetMessagesStatistics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg, "data": resp})
 }
 
+// GetUserStatistics 获取目标时间跨度上的活跃用户、新增用户、用户总数的变化数据.[axis]
 func GetUserStatistics(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetUserStatisticsRequest
@@ -107,8 +109,8 @@ func GetUserStatistics(c *gin.Context) {
 	resp.TotalUserNum = int(respPb.TotalUserNum)
 	for _, v := range respPb.ActiveUserNumList {
 		resp.ActiveUserNumList = append(resp.ActiveUserNumList, struct {
-			Date          string "json:\"date\""
-			ActiveUserNum int    "json:\"activeUserNum\""
+			Date          string `json:"date"`
+			ActiveUserNum int    `json:"activeUserNum"`
 		}{
 			Date:          v.Date,
 			ActiveUserNum: int(v.Num),
@@ -116,8 +118,8 @@ func GetUserStatistics(c *gin.Context) {
 	}
 	for _, v := range respPb.IncreaseUserNumList {
 		resp.IncreaseUserNumList = append(resp.IncreaseUserNumList, struct {
-			Date            string "json:\"date\""
-			IncreaseUserNum int    "json:\"increaseUserNum\""
+			Date            string `json:"date"`
+			IncreaseUserNum int    `json:"increaseUserNum"`
 		}{
 			Date:            v.Date,
 			IncreaseUserNum: int(v.Num),
@@ -125,8 +127,8 @@ func GetUserStatistics(c *gin.Context) {
 	}
 	for _, v := range respPb.TotalUserNumList {
 		resp.TotalUserNumList = append(resp.TotalUserNumList, struct {
-			Date         string "json:\"date\""
-			TotalUserNum int    "json:\"totalUserNum\""
+			Date         string `json:"date"`
+			TotalUserNum int    `json:"totalUserNum"`
 		}{
 			Date:         v.Date,
 			TotalUserNum: int(v.Num),
@@ -173,8 +175,8 @@ func GetGroupStatistics(c *gin.Context) {
 	for _, v := range respPb.IncreaseGroupNumList {
 		resp.IncreaseGroupNumList = append(resp.IncreaseGroupNumList,
 			struct {
-				Date             string "json:\"date\""
-				IncreaseGroupNum int    "json:\"increaseGroupNum\""
+				Date             string `json:"date"`
+				IncreaseGroupNum int    `json:"increaseGroupNum"`
 			}{
 				Date:             v.Date,
 				IncreaseGroupNum: int(v.Num),
@@ -183,8 +185,8 @@ func GetGroupStatistics(c *gin.Context) {
 	for _, v := range respPb.TotalGroupNumList {
 		resp.TotalGroupNumList = append(resp.TotalGroupNumList,
 			struct {
-				Date          string "json:\"date\""
-				TotalGroupNum int    "json:\"totalGroupNum\""
+				Date          string `json:"date"`
+				TotalGroupNum int    `json:"totalGroupNum"`
 			}{
 				Date:          v.Date,
 				TotalGroupNum: int(v.Num),
@@ -195,6 +197,7 @@ func GetGroupStatistics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg, "data": resp})
 }
 
+// GetActiveUser 获取一定时间跨度上的活跃用户消息，已经每个活跃用户在此期间的发发消息量. [axis]
 func GetActiveUser(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetActiveUserRequest
@@ -231,6 +234,7 @@ func GetActiveUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg, "data": resp})
 }
 
+// GetActiveGroup 获取一定时间跨度上的活跃群聊信息，已经对应群聊在该时间内的消息量. [axis]
 func GetActiveGroup(c *gin.Context) {
 	var (
 		req   cms_api_struct.GetActiveGroupRequest
@@ -264,9 +268,9 @@ func GetActiveGroup(c *gin.Context) {
 	}
 	for _, group := range respPb.Groups {
 		resp.ActiveGroupList = append(resp.ActiveGroupList, struct {
-			GroupName  string "json:\"groupName\""
-			GroupId    string "json:\"groupID\""
-			MessageNum int    "json:\"messageNum\""
+			GroupName  string `json:"groupName"`
+			GroupId    string `json:"groupID"`
+			MessageNum int    `json:"messageNum"`
 		}{
 			GroupName:  group.GroupName,
 			GroupId:    group.GroupId,

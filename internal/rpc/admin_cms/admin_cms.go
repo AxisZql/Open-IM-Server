@@ -381,6 +381,7 @@ func GetRangeDate(from, to time.Time) [][2]time.Time {
 			})
 		}
 	// month
+	// take month as time span. [axis]
 	case !isInOneMonth(from, to):
 		// 如果两个时间点的间隔天数小于30天
 		if to.Sub(from) < time.Hour*24*30 {
