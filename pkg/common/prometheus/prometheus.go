@@ -20,6 +20,7 @@ func StartPromeSrv(promethuesPort int) error {
 	return nil
 }
 
+// PrometheusHandler Prometheus metric http server.[axis]
 func PrometheusHandler() gin.HandlerFunc {
 	h := promhttp.Handler()
 	return func(c *gin.Context) {
@@ -37,6 +38,7 @@ func (r responseBodyWriter) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
+// PromeTheusMiddleware success and failure api request count.[axis]
 func PromeTheusMiddleware(c *gin.Context) {
 	PromeInc(ApiRequestCounter)
 	w := &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}

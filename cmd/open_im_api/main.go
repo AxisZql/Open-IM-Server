@@ -223,6 +223,7 @@ func main() {
 		initGroup.POST("/set_client_config", clientInit.SetClientInitConfig)
 		initGroup.POST("/get_client_config", clientInit.GetClientInitConfig)
 	}
+	// register project configure into ETCD. [axis]
 	go getcdv3.RegisterConf()
 	go apiThird.MinioInit()
 	defaultPorts := config.Config.Api.GinPort

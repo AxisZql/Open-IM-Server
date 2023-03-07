@@ -130,6 +130,7 @@ func (d *DataBases) AddTokenFlag(userID string, platformID int, token string, fl
 	return d.RDB.HSet(context.Background(), key, token, flag).Err()
 }
 
+// GetTokenMapUidPid --> redis key UID_PID_TOKEN_STATUS:uid:platformID --> hash type --> (token,validStatus).[axis]
 func (d *DataBases) GetTokenMapByUidPid(userID, platformID string) (map[string]int, error) {
 	key := uidPidToken + userID + ":" + platformID
 	log2.NewDebug("", "get token key is ", key)

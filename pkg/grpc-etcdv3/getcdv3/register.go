@@ -60,6 +60,7 @@ func RegisterEtcd(schema, etcdAddr, myHost string, myPort int, serviceName strin
 
 	//lease
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	resp, err := cli.Grant(ctx, int64(ttl))
 	if err != nil {
 		log.Error(operationID, "Grant failed ", err.Error(), ctx, ttl)
@@ -98,7 +99,8 @@ func RegisterEtcd(schema, etcdAddr, myHost string, myPort int, serviceName strin
 						select {
 						case <-t.C:
 						}
-						ctx, _ := context.WithCancel(context.Background())
+						ctx, cancel := context.WithCancel(context.Background())
+						defer cancel()
 						resp, err := cli.Grant(ctx, int64(ttl))
 						if err != nil {
 							log.Error(operationID, "Grant failed ", err.Error(), args)
@@ -147,6 +149,7 @@ func registerConf(key, conf string) {
 
 }
 
+// RegisterConf register project configuration to ETCD.[axis]
 func RegisterConf() {
 	bytes, err := yaml.Marshal(config.Config)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
+// UnaryServerInterceptorProme 在grpc范围中注册一元拦截器.[axis]
 func UnaryServerInterceptorProme(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	remote, _ := peer.FromContext(ctx)
 	remoteAddr := remote.Addr.String()
@@ -23,7 +24,7 @@ func UnaryServerInterceptorProme(ctx context.Context, req interface{}, info *grp
 	defer func() {
 		out, _ := json.Marshal(resp)
 		outStr := string(out)
-		duration := int64(time.Since(start) / time.Millisecond)
+		duration := int64(time.Since(start) / time.Millisecond) // convert second to millisecond.[axis]
 		if duration >= 500 {
 			log.NewInfo("ip", remoteAddr, "access_end", info.FullMethod, "in", inStr, "out", outStr, "err", err, "duration/ms", duration)
 		} else {

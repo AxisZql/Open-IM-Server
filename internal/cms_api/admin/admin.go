@@ -124,7 +124,7 @@ func AddUserRegisterAddFriendIDList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"errCode": respPb.CommonResp.ErrCode, "errMsg": respPb.CommonResp.ErrMsg})
 }
 
-// ReduceUserRegisterAddFriendIDList 按照userid列表删除对应比较好友中的相关数据. [axis]
+// ReduceUserRegisterAddFriendIDList 按照userid列表删除对应比应加友中的相关数据. [axis]
 func ReduceUserRegisterAddFriendIDList(c *gin.Context) {
 	var (
 		req apiStruct.ReduceUserRegisterAddFriendIDListRequest

@@ -22,6 +22,7 @@ func NewGinRouter() *gin.Engine {
 	baseRouter.Use(gin.Recovery())
 	baseRouter.Use(middleware.CorsHandler())
 	if config.Config.Prometheus.Enable {
+		// enable prometheus metric panel.[axis]
 		baseRouter.GET("/metrics", promePkg.PrometheusHandler())
 	}
 	router := baseRouter.Group("/cms")

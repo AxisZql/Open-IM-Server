@@ -16,6 +16,7 @@ import (
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := cms_api.NewGinRouter()
+	// TODO:same cors middleware defined at different place???[axis]
 	router.Use(utils.CorsHandler())
 	defaultPorts := config.Config.CmsApi.GinPort
 	ginPort := flag.Int("port", defaultPorts[0], "get ginServerPort from cmd,default 10006 as port")
