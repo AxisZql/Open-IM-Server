@@ -99,6 +99,7 @@ func (s *userServer) Run() {
 	log.NewInfo("0", "rpc  user success")
 }
 
+// syncPeerUserConversation 对端用户同步创建会话
 func syncPeerUserConversation(conversation *pbConversation.Conversation, operationID string) error {
 	peerUserConversation := db.Conversation{
 		OwnerUserID:      conversation.UserID,

@@ -348,7 +348,8 @@ func (s *friendServer) AddFriendResponse(ctx context.Context, req *pbFriend.AddF
 		return &pbFriend.AddFriendResponseResp{CommonResp: &pbFriend.CommonResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}}, nil
 	}
 
-	//Change the status of the friend request form
+	//Change the status of the friend request form.
+	// the operation that agree add friend apply.[axis]
 	if req.HandleResult == constant.FriendFlag {
 		var isInsert int
 		//Establish friendship after find friend relationship not exists

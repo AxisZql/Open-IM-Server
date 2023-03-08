@@ -42,6 +42,7 @@ import (
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @BasePath /
 func main() {
+	// TODO: 可以改进的点，采用全局注册中间件验证用户身份.[axis]
 	log.NewPrivateLog(constant.LogFileName)
 	gin.SetMode(gin.ReleaseMode)
 	f, _ := os.Create("../logs/api.log")

@@ -686,7 +686,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 			c.ConversationID = utils.GetConversationIDBySessionType(req.GroupID, constant.GroupChatType)
 			c.ConversationType = constant.GroupChatType
 			c.GroupID = req.GroupID
-			c.IsNotInGroup = true
+			c.IsNotInGroup = true // 被踢后，会话框保留，修改会话框的IsNotInGroup属性为true. [axis]
 			reqPb.Conversation = &c
 			etcdConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImUserName, req.OperationID)
 			if etcdConn == nil {

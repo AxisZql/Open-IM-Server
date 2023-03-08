@@ -51,6 +51,9 @@ func SetConversation(c *gin.Context) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), "resp: ", resp)
 	c.JSON(http.StatusOK, resp)
 }
+
+// ModifyConversationField update the one field of conversation  at once time,then delete all 
+// conversation cache that userid bind with the conversation. [axis]
 func ModifyConversationField(c *gin.Context) {
 	var (
 		req   api.ModifyConversationFieldReq
