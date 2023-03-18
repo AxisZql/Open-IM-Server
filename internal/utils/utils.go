@@ -2,11 +2,12 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/jsonpb"
+	"google.golang.org/protobuf/proto"
 	"reflect"
 )
 
+// JsonDataList 将slice中的struct序列化成map[string]interface{}再放入[]map[string]interface{},多此一举了.[axis]
 func JsonDataList(resp interface{}) []map[string]interface{} {
 	var list []proto.Message
 	if reflect.TypeOf(resp).Kind() == reflect.Slice {

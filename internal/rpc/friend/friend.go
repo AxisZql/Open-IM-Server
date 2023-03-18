@@ -342,6 +342,7 @@ func (s *friendServer) AddFriendResponse(ctx context.Context, req *pbFriend.AddF
 	//friendRequest.HandleTime.Unix()
 	friendRequest.HandleMsg = req.HandleMsg
 	friendRequest.HandlerUserID = req.CommID.OpUserID
+	// update correspond record in mysql.[axis]
 	err = imdb.UpdateFriendApplication(friendRequest)
 	if err != nil {
 		log.NewError(req.CommID.OperationID, "UpdateFriendApplication failed ", err.Error(), friendRequest)
@@ -453,6 +454,7 @@ func (s *friendServer) DeleteFriend(ctx context.Context, req *pbFriend.DeleteFri
 		return &pbFriend.DeleteFriendResp{CommonResp: &pbFriend.CommonResp{ErrCode: constant.ErrInternal.ErrCode, ErrMsg: errMsg}}, nil
 	}
 	client := pbCache.NewCacheClient(etcdConn)
+	// 标记删除主动删除方的好友缓存.[axis]
 	respPb, err := client.DelFriendIDListFromCache(context.Background(), &pbCache.DelFriendIDListFromCacheReq{OperationID: req.CommID.OperationID, UserID: req.CommID.FromUserID})
 	if err != nil {
 		log.NewError(req.CommID.OperationID, utils.GetSelfFuncName(), "DelFriendIDListFromCache rpc failed", err.Error())
@@ -462,6 +464,7 @@ func (s *friendServer) DeleteFriend(ctx context.Context, req *pbFriend.DeleteFri
 		log.NewError(req.CommID.OperationID, utils.GetSelfFuncName(), "DelFriendIDListFromCache failed", respPb.CommonResp.String())
 		return &pbFriend.DeleteFriendResp{CommonResp: &pbFriend.CommonResp{ErrCode: respPb.CommonResp.ErrCode, ErrMsg: respPb.CommonResp.ErrMsg}}, nil
 	}
+	// TODO:单方面删除，那为什么要同时删除两方的好友信息缓存.[axis]
 	if err := rocksCache.DelAllFriendsInfoFromCache(req.CommID.FromUserID); err != nil {
 		log.NewError(req.CommID.OperationID, utils.GetSelfFuncName(), err.Error(), req.CommID.FromUserID)
 	}
