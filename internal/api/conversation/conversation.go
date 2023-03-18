@@ -52,7 +52,7 @@ func SetConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// ModifyConversationField update the one field of conversation  at once time,then delete all 
+// ModifyConversationField update the one field of conversation  at once time,then delete all
 // conversation cache that userid bind with the conversation. [axis]
 func ModifyConversationField(c *gin.Context) {
 	var (
@@ -130,6 +130,7 @@ func BatchSetConversations(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetAllConversations
 // @Summary 获取用户所有会话
 // @Description 获取用户所有会话
 // @Tags 会话相关
@@ -180,6 +181,7 @@ func GetAllConversations(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetConversation
 // @Summary 根据会话ID获取会话
 // @Description 根据会话ID获取会话
 // @Tags 会话相关
@@ -230,6 +232,7 @@ func GetConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetConversations
 // @Summary 根据会话ID列表获取会话
 // @Description 根据会话ID列表获取会话
 // @Tags 会话相关
@@ -315,17 +318,17 @@ func SetRecvMsgOpt(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-//Deprecated
+// Deprecated
 func SetReceiveMessageOpt(c *gin.Context) {
 
 }
 
-//Deprecated
+// Deprecated
 func GetReceiveMessageOpt(c *gin.Context) {
 
 }
 
-//Deprecated
+// Deprecated
 func GetAllConversationMessageOpt(c *gin.Context) {
 
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UserRegister
 // @Summary 用户注册
 // @Description 用户注册
 // @Tags 鉴权认证
@@ -92,6 +93,7 @@ func UserRegister(c *gin.Context) {
 
 }
 
+// UserToken
 // @Summary 用户登录
 // @Description 获取用户的token
 // @Tags 鉴权认证
@@ -141,6 +143,7 @@ func UserToken(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ParseToken
 // @Summary 解析当前用户token
 // @Description 解析当前用户token(token在请求头中传入)
 // @Tags 鉴权认证
@@ -179,6 +182,7 @@ func ParseToken(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ForceLogout
 // @Summary 强制登出
 // @Description 对应的平台强制登出
 // @Tags 鉴权认证

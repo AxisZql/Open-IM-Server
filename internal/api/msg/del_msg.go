@@ -17,6 +17,7 @@ import (
 	"strings"
 )
 
+// DelMsg
 // @Summary 根据seq列表删除消息
 // @Description 根据seq列表删除消息
 // @Tags 消息相关
@@ -169,6 +170,7 @@ func DelSuperGroupMsg(c *gin.Context) {
 
 }
 
+// ClearMsg
 // @Summary 清空用户消息
 // @Description 清空用户消息
 // @Tags 消息相关

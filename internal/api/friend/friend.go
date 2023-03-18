@@ -8,7 +8,7 @@ import (
 	"Open_IM/pkg/common/token_verify"
 	"Open_IM/pkg/grpc-etcdv3/getcdv3"
 	rpc "Open_IM/pkg/proto/friend"
-	open_im_sdk "Open_IM/pkg/proto/sdk_ws"
+	openimsdk "Open_IM/pkg/proto/sdk_ws"
 	"Open_IM/pkg/utils"
 	"context"
 	"github.com/gin-gonic/gin"
@@ -16,6 +16,7 @@ import (
 	"strings"
 )
 
+// AddBlack
 // @Summary 添加黑名单
 // @Description 添加黑名单
 // @Tags 好友相关
@@ -61,6 +62,7 @@ func AddBlack(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ImportFriend
 // @Summary 批量加好友
 // @Description 批量加好友
 // @Tags 好友相关
@@ -121,6 +123,7 @@ func ImportFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// AddFriend
 // @Summary 添加好友
 // @Description 添加好友
 // @Tags 好友相关
@@ -176,6 +179,7 @@ func AddFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// AddFriendResponse
 // @Summary 同意/拒绝好友请求
 // @Description 同意/拒绝好友请求
 // @Tags 好友相关
@@ -234,6 +238,7 @@ func AddFriendResponse(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// DeleteFriend
 // @Summary 删除好友
 // @Description 删除好友
 // @Tags 好友相关
@@ -339,7 +344,7 @@ func GetBlacklist(c *gin.Context) {
 
 	resp := api.GetBlackListResp{CommResp: api.CommResp{ErrCode: RpcResp.ErrCode, ErrMsg: RpcResp.ErrMsg}}
 	for _, v := range RpcResp.BlackUserInfoList {
-		black := open_im_sdk.PublicUserInfo{}
+		black := openimsdk.PublicUserInfo{}
 		utils.CopyStructFields(&black, v)
 		resp.BlackUserInfoList = append(resp.BlackUserInfoList, &black)
 	}
@@ -623,6 +628,7 @@ func GetFriendApplyList(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetSelfFriendApplyList
 // @Summary 获取自己的好友申请列表
 // @Description 获取自己的好友申请列表
 // @Tags 好友相关
