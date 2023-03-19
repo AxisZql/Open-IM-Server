@@ -12,7 +12,7 @@ import (
 	"Open_IM/pkg/utils"
 	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"net/http"
 	"strings"
 )

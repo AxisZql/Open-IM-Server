@@ -620,7 +620,7 @@ func (s *friendServer) GetFriendList(ctx context.Context, req *pbFriend.GetFrien
 	var userInfoList []*sdkws.FriendInfo
 	for _, friendUser := range friendList {
 		friendUserInfo := sdkws.FriendInfo{FriendUser: &sdkws.UserInfo{}}
-		cp.FriendDBCopyOpenIM(&friendUserInfo, friendUser)
+		_ = cp.FriendDBCopyOpenIM(&friendUserInfo, friendUser)
 		log.NewDebug(req.CommID.OperationID, "friends : ", friendUser, "openim friends: ", friendUserInfo)
 		userInfoList = append(userInfoList, &friendUserInfo)
 	}
@@ -628,7 +628,7 @@ func (s *friendServer) GetFriendList(ctx context.Context, req *pbFriend.GetFrien
 	return &pbFriend.GetFriendListResp{FriendInfoList: userInfoList}, nil
 }
 
-// received
+// GetFriendApplyList received
 func (s *friendServer) GetFriendApplyList(ctx context.Context, req *pbFriend.GetFriendApplyListReq) (*pbFriend.GetFriendApplyListResp, error) {
 	log.NewInfo(req.CommID.OperationID, "GetFriendApplyList args ", req.String())
 	//Parse token, to find current user information
@@ -646,7 +646,7 @@ func (s *friendServer) GetFriendApplyList(ctx context.Context, req *pbFriend.Get
 	var appleUserList []*sdkws.FriendRequest
 	for _, applyUserInfo := range ApplyUsersInfo {
 		var userInfo sdkws.FriendRequest
-		cp.FriendRequestDBCopyOpenIM(&userInfo, &applyUserInfo)
+		_ = cp.FriendRequestDBCopyOpenIM(&userInfo, &applyUserInfo)
 		//	utils.CopyStructFields(&userInfo, applyUserInfo)
 		//	u, err := imdb.GetUserByUserID(userInfo.FromUserID)
 		//	if err != nil {
@@ -689,7 +689,7 @@ func (s *friendServer) GetSelfApplyList(ctx context.Context, req *pbFriend.GetSe
 	var selfApplyOtherUserList []*sdkws.FriendRequest
 	for _, selfApplyOtherUserInfo := range usersInfo {
 		var userInfo sdkws.FriendRequest // pbFriend.ApplyUserInfo
-		cp.FriendRequestDBCopyOpenIM(&userInfo, &selfApplyOtherUserInfo)
+		_ = cp.FriendRequestDBCopyOpenIM(&userInfo, &selfApplyOtherUserInfo)
 		//u, err := imdb.GetUserByUserID(userInfo.FromUserID)
 		//if err != nil {
 		//	log.Error(req.CommID.OperationID, "GetUserByUserID", userInfo.FromUserID)

@@ -293,6 +293,7 @@ func DeleteFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetBlacklist
 // @Summary 获取黑名单列表
 // @Description 获取黑名单列表
 // @Tags 好友相关
@@ -353,6 +354,7 @@ func GetBlacklist(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SetFriendRemark
 // @Summary 设置好友备注
 // @Description 设置好友备注
 // @Tags 好友相关
@@ -408,6 +410,7 @@ func SetFriendRemark(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// RemoveBlack
 // @Summary 把用户移除黑名单
 // @Description 把用户移除黑名单
 // @Tags 好友相关
@@ -461,6 +464,7 @@ func RemoveBlack(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// IsFriend
 // @Summary 检查用户之间是否为好友
 // @Description 检查用户之间是否为好友
 // @Tags 好友相关
@@ -516,6 +520,7 @@ func IsFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetFriendList
 // @Summary 获取用户的好友列表
 // @Description 获取用户的好友列表
 // @Tags 好友相关
@@ -572,6 +577,7 @@ func GetFriendList(c *gin.Context) {
 	//c.JSON(http.StatusOK, resp)
 }
 
+// GetFriendApplyList
 // @Summary 获取好友申请列表
 // @Description 删除好友
 // @Tags 好友相关
@@ -585,6 +591,7 @@ func GetFriendList(c *gin.Context) {
 // @Failure 400 {object} api.Swagger400Resp "errCode为400 一般为参数输入错误, token未带上等"
 // @Router /friend/get_friend_apply_list [post]
 func GetFriendApplyList(c *gin.Context) {
+	// 当前用户获取自己收到的好友申请列表信息.[axis]
 	params := api.GetFriendApplyListReq{}
 	if err := c.BindJSON(&params); err != nil {
 		log.NewError("0", "BindJSON failed ", err.Error())
@@ -623,6 +630,7 @@ func GetFriendApplyList(c *gin.Context) {
 	}
 
 	resp := api.GetFriendApplyListResp{CommResp: api.CommResp{ErrCode: RpcResp.ErrCode, ErrMsg: RpcResp.ErrMsg}, FriendRequestList: RpcResp.FriendRequestList}
+	// feel below statement is not need,just say to define of data struct:api.GetFriendApplyListResp has some problem.[axis]
 	resp.Data = jsonData.JsonDataList(resp.FriendRequestList)
 	log.NewInfo(req.CommID.OperationID, "GetFriendApplyList api return ", resp)
 	c.JSON(http.StatusOK, resp)

@@ -1,6 +1,6 @@
 package base_info
 
-import open_im_sdk "Open_IM/pkg/proto/sdk_ws"
+import openimsdk "Open_IM/pkg/proto/sdk_ws"
 
 type ParamsCommFriend struct {
 	OperationID string `json:"operationID" binding:"required"`
@@ -59,8 +59,8 @@ type GetBlackListReq struct {
 }
 type GetBlackListResp struct {
 	CommResp
-	BlackUserInfoList []*open_im_sdk.PublicUserInfo `json:"-"`
-	Data              []map[string]interface{}      `json:"data" swaggerignore:"true"`
+	BlackUserInfoList []*openimsdk.PublicUserInfo `json:"-"`
+	Data              []map[string]interface{}    `json:"data" swaggerignore:"true"`
 }
 
 //type PublicUserInfo struct {
@@ -101,8 +101,8 @@ type GetFriendsInfoReq struct {
 }
 type GetFriendsInfoResp struct {
 	CommResp
-	FriendInfoList []*open_im_sdk.FriendInfo `json:"-"`
-	Data           []map[string]interface{}  `json:"data" swaggerignore:"true"`
+	FriendInfoList []*openimsdk.FriendInfo  `json:"-"`
+	Data           []map[string]interface{} `json:"data" swaggerignore:"true"`
 }
 
 type GetFriendListReq struct {
@@ -111,8 +111,8 @@ type GetFriendListReq struct {
 }
 type GetFriendListResp struct {
 	CommResp
-	FriendInfoList []*open_im_sdk.FriendInfo `json:"-"`
-	Data           []map[string]interface{}  `json:"data" swaggerignore:"true"`
+	FriendInfoList []*openimsdk.FriendInfo  `json:"-"`
+	Data           []map[string]interface{} `json:"data" swaggerignore:"true"`
 }
 
 type GetFriendApplyListReq struct {
@@ -121,8 +121,8 @@ type GetFriendApplyListReq struct {
 }
 type GetFriendApplyListResp struct {
 	CommResp
-	FriendRequestList []*open_im_sdk.FriendRequest `json:"-"`
-	Data              []map[string]interface{}     `json:"data" swaggerignore:"true"`
+	FriendRequestList []*openimsdk.FriendRequest `json:"-"`
+	Data              []map[string]interface{}   `json:"data" swaggerignore:"true"`
 }
 
 type GetSelfApplyListReq struct {
@@ -131,6 +131,6 @@ type GetSelfApplyListReq struct {
 }
 type GetSelfApplyListResp struct {
 	CommResp
-	FriendRequestList []*open_im_sdk.FriendRequest `json:"-"`
-	Data              []map[string]interface{}     `json:"data" swaggerignore:"true"`
+	FriendRequestList []*openimsdk.FriendRequest `json:"-"`
+	Data              []map[string]interface{}   `json:"data" swaggerignore:"true"`
 }

@@ -2,8 +2,8 @@ package utils
 
 import (
 	"encoding/json"
-	"google.golang.org/protobuf/jsonpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"reflect"
 )
 
