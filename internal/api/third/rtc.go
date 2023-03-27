@@ -11,6 +11,7 @@ import (
 )
 
 func GetRTCInvitationInfo(c *gin.Context) {
+	// support multiple person video chat or single to single video chat.
 	var (
 		req  api.GetRTCInvitationInfoReq
 		resp api.GetRTCInvitationInfoResp

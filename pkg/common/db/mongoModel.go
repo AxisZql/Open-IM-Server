@@ -335,7 +335,7 @@ func (d *DataBases) GetNewestMsg(ID string) (msg *MsgInfo, err error) {
 	defer cancel()
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cChat)
 	regex := fmt.Sprintf("^%s", ID)
-	findOpts := options.Find().SetLimit(1).SetSort(bson.M{"uid": -1}) // desc sort by uid to get newest message. [axis] 
+	findOpts := options.Find().SetLimit(1).SetSort(bson.M{"uid": -1}) // desc sort by uid to get newest message. [axis]
 	var userChats []UserChat
 	cursor, err := c.Find(ctx, bson.M{"uid": bson.M{"$regex": regex}}, findOpts)
 	if err != nil {
@@ -1122,12 +1122,12 @@ func (d *DataBases) CreateSuperGroup(groupID string, initMemberIDList []string, 
 		_ = session.AbortTransaction(ctx)
 		return utils.Wrap(err, "transaction failed")
 	}
-	var users []UserToSuperGroup
-	for _, v := range initMemberIDList {
-		users = append(users, UserToSuperGroup{
-			UserID: v,
-		})
-	}
+	//var users []UserToSuperGroup
+	//for _, v := range initMemberIDList {
+	//	users = append(users, UserToSuperGroup{
+	//		UserID: v,
+	//	})
+	//}
 	upsert := true
 	// 配置，如果没有数据就插入，有数据就更新
 	opts := &options.UpdateOptions{
@@ -1178,12 +1178,13 @@ func (d *DataBases) AddUserToSuperGroup(groupID string, userIDList []string) err
 		return utils.Wrap(err, "transaction failed")
 	}
 	c = d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cUserToSuperGroup)
-	var users []UserToSuperGroup
-	for _, v := range userIDList {
-		users = append(users, UserToSuperGroup{
-			UserID: v,
-		})
-	}
+	// following code not need, why keep them there?[axis]
+	//var users []UserToSuperGroup
+	//for _, v := range userIDList {
+	//	users = append(users, UserToSuperGroup{
+	//		UserID: v,
+	//	})
+	//}
 	upsert := true
 	opts := &options.UpdateOptions{
 		Upsert: &upsert,
@@ -1199,6 +1200,7 @@ func (d *DataBases) AddUserToSuperGroup(groupID string, userIDList []string) err
 	return err
 }
 
+// RemoverUserFromSuperGroup mongodb 事务
 func (d *DataBases) RemoverUserFromSuperGroup(groupID string, userIDList []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.Config.Mongo.DBTimeout)*time.Second)
 	defer cancel()
@@ -1258,12 +1260,14 @@ func (d *DataBases) DeleteSuperGroup(groupID string) error {
 }
 
 func (d *DataBases) RemoveGroupFromUser(ctx, sCtx context.Context, groupID string, userIDList []string) error {
+	// TODO:to be honest,there is not need for the following code.[axis]
 	var users []UserToSuperGroup
 	for _, v := range userIDList {
 		users = append(users, UserToSuperGroup{
 			UserID: v,
 		})
 	}
+	// 在大群中，会在mongodb中记录每个用户加入的大群id列表.[axis]
 	c := d.mongoClient.Database(config.Config.Mongo.DBDatabase).Collection(cUserToSuperGroup)
 	// $pull 操作符表示删除符合指定条件的记录的对应属性值
 	_, err := c.UpdateOne(sCtx, bson.M{"user_id": bson.M{"$in": userIDList}}, bson.M{"$pull": bson.M{"group_id_list": groupID}})

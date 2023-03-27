@@ -258,7 +258,7 @@ func GetGroupMembersInfoFromCache(count, offset int32, groupID string) ([]*db.Gr
 		if stop >= l {
 			stop = l
 		}
-		groupMemberIDList = groupMemberIDList[start:stop] // TODO: axis 这种全量获取，然后分页返回，只是为了减少回传给客户端的数据传输成本吗？
+		groupMemberIDList = groupMemberIDList[start:stop] // TODO:axis 这种全量获取，然后分页返回，只是为了减少回传给客户端的数据传输成本吗？
 	} else {
 		if l < 1000 {
 			stop = l

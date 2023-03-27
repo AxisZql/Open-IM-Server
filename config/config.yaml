@@ -774,6 +774,9 @@ workMoment:
 
 rtc:
   signalTimeout: 35
+  liveURL: ""
+  Key: ""
+  Secret: ""
 
 # prometheus每个服务监听的端口数量需要和rpc port保持一致
 prometheus:

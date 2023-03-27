@@ -256,6 +256,8 @@ func (s *organizationServer) DeleteDepartment(ctx context.Context, req *rpc.Dele
 		log.Error(req.OperationID, errMsg)
 		return &rpc.DeleteDepartmentResp{ErrCode: constant.ErrAccess.ErrCode, ErrMsg: errMsg}, nil
 	}
+	// TODO:There is a problem here, the situation that there are sub-departments and members under the deleted department
+	// is not considered.[axis]
 	err := imdb.DeleteDepartment(req.DepartmentID)
 	if err != nil {
 		errMsg := req.OperationID + " " + "DeleteDepartment failed " + err.Error()

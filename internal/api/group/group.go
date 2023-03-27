@@ -8,7 +8,7 @@ import (
 	"Open_IM/pkg/common/token_verify"
 	"Open_IM/pkg/grpc-etcdv3/getcdv3"
 	rpc "Open_IM/pkg/proto/group"
-	open_im_sdk "Open_IM/pkg/proto/sdk_ws"
+	openimsdk "Open_IM/pkg/proto/sdk_ws"
 	"Open_IM/pkg/utils"
 	"context"
 
@@ -23,6 +23,7 @@ import (
 	jsonData "Open_IM/internal/utils"
 )
 
+// KickGroupMember
 // @Summary 把用户踢出群组
 // @Description 把用户踢出群组
 // @Tags 群组相关
@@ -81,6 +82,7 @@ func KickGroupMember(c *gin.Context) {
 	memberListResp.ErrMsg = RpcResp.ErrMsg
 	memberListResp.ErrCode = RpcResp.ErrCode
 	for _, v := range RpcResp.Id2ResultList {
+		// success kicked v.Result=0, failure kicked v.Result=-1.[axis]
 		memberListResp.UserIDResultList = append(memberListResp.UserIDResultList, &api.UserIDResult{UserID: v.UserID, Result: v.Result})
 	}
 	if len(memberListResp.UserIDResultList) == 0 {
@@ -91,6 +93,7 @@ func KickGroupMember(c *gin.Context) {
 	c.JSON(http.StatusOK, memberListResp)
 }
 
+// GetGroupMembersInfo
 // @Summary 获取群成员信息
 // @Description 获取群成员信息
 // @Tags 群组相关
@@ -147,6 +150,7 @@ func GetGroupMembersInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, memberListResp)
 }
 
+// GetGroupMemberList  deprecate 【弃用】.[axis]
 func GetGroupMemberList(c *gin.Context) {
 	params := api.GetGroupMemberListReq{}
 	if err := c.BindJSON(&params); err != nil {
@@ -192,6 +196,7 @@ func GetGroupMemberList(c *gin.Context) {
 	c.JSON(http.StatusOK, memberListResp)
 }
 
+// GetGroupAllMemberList
 // @Summary 获取全部群成员列表
 // @Description 获取全部群成员列表
 // @Tags 群组相关
@@ -233,6 +238,7 @@ func GetGroupAllMemberList(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": 500, "errMsg": errMsg})
 		return
 	}
+	// setting maximum receive msg size.[axis]
 	maxSizeOption := grpc.MaxCallRecvMsgSize(1024 * 1024 * constant.GroupRPCRecvSize)
 	client := rpc.NewGroupClient(etcdConn)
 	RpcResp, err := client.GetGroupAllMember(context.Background(), req, maxSizeOption)
@@ -248,6 +254,7 @@ func GetGroupAllMemberList(c *gin.Context) {
 	c.JSON(http.StatusOK, memberListResp)
 }
 
+// GetJoinedGroupList
 // @Summary 获取用户加入群列表
 // @Description 获取用户加入群列表
 // @Tags 群组相关
@@ -303,6 +310,7 @@ func GetJoinedGroupList(c *gin.Context) {
 	c.JSON(http.StatusOK, GroupListResp)
 }
 
+// InviteUserToGroup
 // @Summary 将用户拉入群组
 // @Description 将用户拉入群组
 // @Tags 群组相关
@@ -371,6 +379,7 @@ func InviteUserToGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// CreateGroup
 // @Summary 创建群组
 // @Description 创建群组
 // @Tags 群组相关
@@ -397,7 +406,7 @@ func CreateGroup(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"errCode": 400, "errMsg": errMsg})
 		return
 	}
-	req := &rpc.CreateGroupReq{GroupInfo: &open_im_sdk.GroupInfo{}}
+	req := &rpc.CreateGroupReq{GroupInfo: &openimsdk.GroupInfo{}}
 	utils.CopyStructFields(req.GroupInfo, &params)
 
 	for _, v := range params.MemberList {
@@ -443,6 +452,7 @@ func CreateGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetRecvGroupApplicationList
 // @Summary 获取用户收到的加群信息列表
 // @Description 获取用户收到的加群信息列表
 // @Tags 群组相关
@@ -496,6 +506,7 @@ func GetRecvGroupApplicationList(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetUserReqGroupApplicationList
 // @Summary 获取用户加群申请列表
 // @Description 获取用户加群申请列表
 // @Tags 群组相关
@@ -548,6 +559,7 @@ func GetUserReqGroupApplicationList(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetGroupsInfo
 // @Summary 通过群ID列表获取群信息
 // @Description 通过群ID列表获取群信息
 // @Tags 群组相关
@@ -617,9 +629,10 @@ func GetGroupsInfo(c *gin.Context) {
 
 //process application
 
+// ApplicationGroupResponse
 // @Summary 处理加群消息
 // @Description 处理加群消息
-// @Tags 群组相关
+// @Tags 群组相关，只针对普通群.[axis]
 // @ID ApplicationGroupResponse
 // @Accept json
 // @Param token header string true "im token"
@@ -671,6 +684,7 @@ func ApplicationGroupResponse(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// JoinGroup
 // @Summary 加入群聊
 // @Description 加入群聊
 // @Tags 群组相关
@@ -724,6 +738,7 @@ func JoinGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// QuitGroup
 // @Summary 当前用户退出群聊
 // @Description 当前用户退出群聊
 // @Tags 群组相关
@@ -777,6 +792,7 @@ func QuitGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SetGroupInfo
 // @Summary 设置群信息
 // @Description 设置群信息
 // @Tags 群组相关
@@ -796,7 +812,7 @@ func SetGroupInfo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errCode": 400, "errMsg": err.Error()})
 		return
 	}
-	req := &rpc.SetGroupInfoReq{GroupInfoForSet: &open_im_sdk.GroupInfoForSet{}}
+	req := &rpc.SetGroupInfoReq{GroupInfoForSet: &openimsdk.GroupInfoForSet{}}
 	utils.CopyStructFields(req.GroupInfoForSet, &params)
 	req.OperationID = params.OperationID
 	argsHandle(&params, req)
@@ -845,6 +861,7 @@ func argsHandle(params *api.SetGroupInfoReq, req *rpc.SetGroupInfoReq) {
 	}
 }
 
+// TransferGroupOwner
 // @Summary 转让群主
 // @Description 转让群主
 // @Tags 群组相关
@@ -899,6 +916,7 @@ func TransferGroupOwner(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// DismissGroup
 // @Summary 解散群组
 // @Description 解散群组
 // @Tags 群组相关
@@ -953,6 +971,7 @@ func DismissGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// MuteGroupMember
 // @Summary 禁言群成员
 // @Description 禁言群成员
 // @Tags 群组相关
@@ -1007,6 +1026,7 @@ func MuteGroupMember(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// CancelMuteGroupMember
 // @Summary 取消禁言群成员
 // @Description 取消禁言群成员
 // @Tags 群组相关
@@ -1061,6 +1081,7 @@ func CancelMuteGroupMember(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// MuteGroup
 // @Summary 禁言群组
 // @Description 禁言群组
 // @Tags 群组相关
@@ -1115,6 +1136,7 @@ func MuteGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// CancelMuteGroup
 // @Summary 取消禁言群组
 // @Description 取消禁言群组
 // @Tags 群组相关
@@ -1213,6 +1235,7 @@ func SetGroupMemberNickname(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SetGroupMemberInfo
 // @Summary 修改群成员信息
 // @Description 修改群成员信息
 // @Tags 群组相关

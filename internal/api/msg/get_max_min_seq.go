@@ -6,7 +6,7 @@ import (
 	"Open_IM/pkg/common/token_verify"
 	"Open_IM/pkg/grpc-etcdv3/getcdv3"
 	pbChat "Open_IM/pkg/proto/msg"
-	sdk_ws "Open_IM/pkg/proto/sdk_ws"
+	sdkws "Open_IM/pkg/proto/sdk_ws"
 	"context"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -20,6 +20,7 @@ type paramsUserNewestSeq struct {
 	MsgIncr       int    `json:"msgIncr" binding:"required"`
 }
 
+// GetSeq just get current user single chat min and max msg seq id.[axis]
 func GetSeq(c *gin.Context) {
 	params := paramsUserNewestSeq{}
 	if err := c.BindJSON(&params); err != nil {
@@ -32,7 +33,7 @@ func GetSeq(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errCode": 400, "errMsg": "token validate err" + err.Error()})
 		return
 	}
-	pbData := sdk_ws.GetMaxAndMinSeqReq{}
+	pbData := sdkws.GetMaxAndMinSeqReq{}
 	pbData.UserID = params.SendID
 	pbData.OperationID = params.OperationID
 	grpcConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImMsgName, pbData.OperationID)

@@ -1,5 +1,4 @@
 FROM alpine:3.13
-
 # 设置固定的项目路径
 ENV WORKDIR /app
 ENV CONFIG_NAME $WORKDIR/config/config.yaml

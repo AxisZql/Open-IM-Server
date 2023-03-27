@@ -16,6 +16,7 @@ import (
 	"strings"
 )
 
+// CreateDepartment
 // @Summary 创建部门
 // @Description 创建部门
 // @Tags 组织架构相关

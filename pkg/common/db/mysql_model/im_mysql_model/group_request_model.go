@@ -27,6 +27,7 @@ func UpdateGroupRequest(groupRequest db.GroupRequest) error {
 }
 
 func InsertIntoGroupRequest(toInsertInfo db.GroupRequest) error {
+	// TODO:fuck you! He doesn't know how to use Save(),but uses the mentally retarded method of Deleting first and then Updating.[axis]
 	DelGroupRequestByGroupIDAndUserID(toInsertInfo.GroupID, toInsertInfo.UserID)
 	if toInsertInfo.HandledTime.Unix() < 0 {
 		toInsertInfo.HandledTime = utils.UnixSecondToTime(0)
@@ -70,15 +71,17 @@ func GetGroupRequestByGroupID(groupID string) ([]db.GroupRequest, error) {
 	return groupRequestList, nil
 }
 
-//received
+// received
 func GetGroupApplicationList(userID string) ([]db.GroupRequest, error) {
 	var groupRequestList []db.GroupRequest
+	// get current user all group that he join.[axis]
 	memberList, err := GetGroupMemberListByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range memberList {
 		if v.RoleLevel > constant.GroupOrdinaryUsers {
+			// get all join request of group that he manage.[axis]
 			list, err := GetGroupRequestByGroupID(v.GroupID)
 			if err != nil {
 				//		fmt.Println("111 GetGroupRequestByGroupID failed ", err.Error())

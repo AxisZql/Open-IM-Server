@@ -185,7 +185,6 @@ func (rpc *RpcChat) messageVerification(data *pbChat.SendMsgReq) (bool, int32, s
 				return true, 0, "", userIDList
 			}
 			if !utils.IsContain(data.MsgData.SendID, userIDList) {
-				//return returnMsg(&replay, pb, 202, "you are not in group", "", 0)
 				return false, 202, "you are not in group", nil
 			}
 		}
@@ -488,7 +487,7 @@ func (rpc *RpcChat) SendMsg(_ context.Context, pb *pbChat.SendMsgReq) (*pbChat.S
 		if callbackResp.ErrCode != 0 {
 			log.NewError(pb.OperationID, utils.GetSelfFuncName(), "callbackAfterSendGroupMsg resp: ", callbackResp)
 		}
-		// TODO: 存在的问题，上述流程中只要一批消息发送成功后sendTag即为true，所以sendTag==true无法保证
+		// 存在的问题，上述流程中只要一批消息发送成功后sendTag即为true，所以sendTag==true无法保证, because fo msg think is send success when have one person on the group success receive the msg.[axis]
 		// 所有批次的消息发送成功
 		// 发送成功与否后的处理流程  axis
 		if !sendTag {

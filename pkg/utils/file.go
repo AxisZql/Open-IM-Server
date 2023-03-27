@@ -40,6 +40,7 @@ func MkDir(path string) error {
 	return os.MkdirAll(path, os.ModePerm)
 }
 
+// GetNewFileNameAndContentType big mistake! if fileType!=constant.ImageType the function will return the contentType with "".[axis]
 func GetNewFileNameAndContentType(fileName string, fileType int) (string, string) {
 	suffix := path.Ext(fileName)
 	newName := fmt.Sprintf("%d-%d%s", time.Now().UnixNano(), rand.Int(), fileName)

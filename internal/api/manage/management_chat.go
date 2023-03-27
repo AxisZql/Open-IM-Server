@@ -105,6 +105,7 @@ func init() {
 	validate = validator.New()
 }
 
+// ManagementSendMsg
 // @Summary 管理员发送/撤回消息
 // @Description 管理员发送/撤回消息 消息格式详细见<a href="https://doc.rentsoft.cn/#/server_doc/admin?id=%e6%b6%88%e6%81%af%e7%b1%bb%e5%9e%8b%e6%a0%bc%e5%bc%8f%e6%8f%8f%e8%bf%b0">消息格式</href>
 // @Tags 消息相关
@@ -233,6 +234,7 @@ func ManagementSendMsg(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ManagementBatchSendMsg
 // @Summary 管理员批量发送群聊单聊消息
 // @Description 管理员批量发送群聊单聊消息 消息格式详细见<a href="https://doc.rentsoft.cn/#/server_doc/admin?id=%e6%b6%88%e6%81%af%e7%b1%bb%e5%9e%8b%e6%a0%bc%e5%bc%8f%e6%8f%8f%e8%bf%b0">消息格式</href>
 // @Tags 消息相关
@@ -373,6 +375,7 @@ func ManagementBatchSendMsg(c *gin.Context) {
 		})
 	}
 	var status int32
+	// have one error that will think current request is failure.[axis]
 	if msgSendFailedFlag {
 		status = constant.MsgSendFailed
 	} else {

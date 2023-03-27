@@ -19,6 +19,7 @@ import (
 	"strings"
 )
 
+// MinioUploadFile
 // @Summary minio上传文件(web api)
 // @Description minio上传文件(web api), 请注意本api请求为form并非json
 // @Tags 第三方服务相关
@@ -76,6 +77,7 @@ func MinioUploadFile(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"errCode": 400, "errMsg": err.Error()})
 			return
 		}
+		// TODO: the Content-Type field of video data is "video/mpeg4" if video data is mp4 type.[axis]
 		snapShotNewName, snapShotNewType := utils.GetNewFileNameAndContentType(snapShotFile.Filename, constant.ImageType)
 		log.Debug(req.OperationID, utils.GetSelfFuncName(), snapShotNewName, snapShotNewType)
 		_, err = MinioClient.PutObject(context.Background(), config.Config.Credential.Minio.Bucket, snapShotNewName, snapShotFileObj, snapShotFile.Size, minio.PutObjectOptions{ContentType: snapShotNewType})
@@ -114,6 +116,7 @@ func MinioUploadFile(c *gin.Context) {
 	return
 }
 
+// MinioStorageCredential produce credential of minio to the client.[axis]
 func MinioStorageCredential(c *gin.Context) {
 	var (
 		req  api.MinioStorageCredentialReq

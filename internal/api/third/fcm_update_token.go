@@ -11,6 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/**
+@desc: the third party tool that push offline msg to mobile phone.[axis]
+*/
+
 func FcmUpdateToken(c *gin.Context) {
 	var (
 		req  api.FcmUpdateTokenReq

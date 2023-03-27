@@ -369,7 +369,7 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 		log.NewInfo(req.OperationID, "InviteUserToGroup rpc return ", resp.String())
 		return &resp, nil
 	}
-	//
+	// processing logic: invite not need verification.[axis]
 	//from User:  invite: applicant
 	//to user:  invite: invited
 	var okUserIDList []string
@@ -419,12 +419,12 @@ func (s *groupServer) InviteUserToGroup(ctx context.Context, req *pbGroup.Invite
 		if err != nil {
 			log.NewError(req.OperationID, "GetConversationsByConversationIDMultipleOwner failed ", err.Error(), req.GroupID, constant.GroupChatType)
 		}
-		// TODO: 这里conversation会不会存在重复的问题
 		for _, v := range conversations {
 			haveConUserID = append(haveConUserID, v.OwnerUserID)
 		}
 		var reqPb pbUser.SetConversationReq
 		var c pbConversation.Conversation
+		// 这里重新建立会话是因为用户可能之前删除群聊天会话但是没有退群，所以会话信息会保留在数据库，当对应用户被重新邀请后重新建立会话.[axis]
 		for _, v := range conversations {
 			reqPb.OperationID = req.OperationID
 			c.OwnerUserID = v.OwnerUserID
@@ -667,7 +667,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 				continue
 			}
 
-			// TODO: 如果app manager 踢出群主，没有群权转换逻辑，合适吗？还是直接将该群解散？
+			// TODO:如果app manager 踢出群主，没有群权转换逻辑，合适吗？还是直接将该群解散？
 			err = imdb.DeleteGroupMemberByGroupIDAndUserID(req.GroupID, v)
 			if err != nil {
 				log.NewError(req.OperationID, "RemoveGroupMember failed ", err.Error(), req.GroupID, v)
@@ -734,6 +734,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbGroup.KickGrou
 		log.NewError(req.OperationID, "DelGroupMemberIDListFromCache rpc logic call failed ", cacheResp.String())
 		return &pbGroup.KickGroupMemberResp{ErrCode: constant.ErrDB.ErrCode, ErrMsg: constant.ErrDB.ErrMsg}, nil
 	}
+	//  tag delete group memberIDList hash that in redis.[axis]
 	if err := rocksCache.DelGroupMemberListHashFromCache(req.GroupID); err != nil {
 		log.NewError(req.OperationID, utils.GetSelfFuncName(), req.GroupID, err.Error())
 	}
@@ -810,8 +811,10 @@ func (s *groupServer) GetGroupMembersInfo(ctx context.Context, req *pbGroup.GetG
 	return &resp, nil
 }
 
-// GetGroupApplicationList 获取当前用户所有入群申请列表 axis
+// GetGroupApplicationList 获取当前用户所加入群的所有入群申请列表 axis
 func (s *groupServer) GetGroupApplicationList(_ context.Context, req *pbGroup.GetGroupApplicationListReq) (*pbGroup.GetGroupApplicationListResp, error) {
+	// TODO: this api have an disadvantage.because of all people can get the join request of the group their join.
+	// normally, join request of group must only receive by group admin or group owner.[axis]
 	log.NewInfo(req.OperationID, "GetGroupApplicationList args ", req.String())
 	reply, err := imdb.GetGroupApplicationList(req.FromUserID)
 	if err != nil {
@@ -871,6 +874,7 @@ func (s *groupServer) GetGroupsInfo(ctx context.Context, req *pbGroup.GetGroupsI
 }
 
 func (s *groupServer) GroupApplicationResponse(_ context.Context, req *pbGroup.GroupApplicationResponseReq) (*pbGroup.GroupApplicationResponseResp, error) {
+	// confusion: why  haven't super group processing logic.[axis]
 	log.NewInfo(req.OperationID, "GroupApplicationResponse args ", req.String())
 	groupRequest := db.GroupRequest{}
 	utils.CopyStructFields(&groupRequest, req)

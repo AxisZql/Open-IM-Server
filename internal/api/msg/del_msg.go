@@ -12,14 +12,14 @@ import (
 	"Open_IM/pkg/utils"
 	"context"
 	"github.com/gin-gonic/gin"
-	"google.golang.org/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"net/http"
 	"strings"
 )
 
 // DelMsg
 // @Summary 根据seq列表删除消息
-// @Description 根据seq列表删除消息
+// @Description 根据seq列表删除消息, logical delete.[axis]
 // @Tags 消息相关
 // @ID DelMsg
 // @Accept json
@@ -74,6 +74,7 @@ func DelMsg(c *gin.Context) {
 	log.NewInfo(req.OperationID, utils.GetSelfFuncName(), resp)
 	c.JSON(http.StatusOK, resp)
 }
+
 func DelSuperGroupMsg(c *gin.Context) {
 	var (
 		req  api.DelSuperGroupMsgReq
@@ -143,6 +144,7 @@ func DelSuperGroupMsg(c *gin.Context) {
 
 	log.Info(req.OperationID, "", "api DelSuperGroupMsg call, api call rpc...")
 	if req.IsAllDelete {
+		// logic delete by setting current user min seq as max seq on the group.[axis]
 		RpcResp, err := client.DelSuperGroupMsg(context.Background(), rpcReq)
 		if err != nil {
 			log.NewError(req.OperationID, "call delete DelSuperGroupMsg rpc server failed", err.Error())
@@ -155,6 +157,7 @@ func DelSuperGroupMsg(c *gin.Context) {
 		log.NewInfo(req.OperationID, utils.GetSelfFuncName(), resp)
 		c.JSON(http.StatusOK, resp)
 	} else {
+		// delete a specific range of messages by sending a notification type message.[axis]
 		RpcResp, err := client.SendMsg(context.Background(), &pbData)
 		if err != nil {
 			log.NewError(req.OperationID, "call delete UserSendMsg rpc server failed", err.Error())
@@ -227,6 +230,7 @@ func ClearMsg(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SetMsgMinSeq
 // @Summary 设置用户最小seq
 // @Description 设置用户最小seq，以及用户相关读扩散群组最小seq
 // @Tags 消息相关

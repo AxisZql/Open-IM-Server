@@ -527,6 +527,9 @@ type config struct {
 	} `yaml:"workMoment"`
 	Rtc struct {
 		SignalTimeout string `yaml:"signalTimeout"`
+		LiveURL       string `yaml:"liveURL"`
+		Key           string `yaml:"key"`
+		Secret        string `yaml:"secret"`
 	} `yaml:"rtc"`
 
 	Prometheus struct {

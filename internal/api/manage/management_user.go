@@ -1,9 +1,3 @@
-/*
-** description("").
-** copyright('open-im,www.open-im.io').
-** author("fg,Gordon@tuoyun.net").
-** time(2021/9/15 10:28).
- */
 package manage
 
 import (
@@ -23,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetAllUsersUid
 // @Summary 获取所有用户uid列表
 // @Description 获取所有用户uid列表
 // @Tags 用户相关
@@ -78,6 +73,7 @@ func GetAllUsersUid(c *gin.Context) {
 
 }
 
+// AccountCheck
 // @Summary 检查列表账户注册状态，并且返回结果
 // @Description 传入UserIDList检查列表账户注册状态，并且返回结果
 // @Tags 用户相关
@@ -133,6 +129,7 @@ func AccountCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetUsersOnlineStatus batch get user online status in all platforms,but the API has been discard.[axis]
 func GetUsersOnlineStatus(c *gin.Context) {
 	params := api.GetUsersOnlineStatusReq{}
 	if err := c.BindJSON(&params); err != nil {

@@ -16,6 +16,7 @@ import (
 	"strings"
 )
 
+// GetUserTags
 // @Summary 获取用户标签信息
 // @Description 用户获取自己的所有的标签
 // @Tags 标签
@@ -79,6 +80,7 @@ func GetUserTags(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// CreateTag
 // @Summary 创建标签
 // @Description 创建标签
 // @Tags 标签
@@ -139,6 +141,7 @@ func CreateTag(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// DeleteTag
 // @Summary 删除标签
 // @Description 根据标签ID创建标签
 // @Tags 标签
@@ -199,6 +202,7 @@ func DeleteTag(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SetTag
 // @Summary 修改标签
 // @Description 根据标签ID修改标签用户列表, 名称
 // @Tags 标签
@@ -259,6 +263,7 @@ func SetTag(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SendMsg2Tag
 // @Summary 发送标签消息
 // @Description 对标签用户发送消息
 // @Tags 标签

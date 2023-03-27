@@ -145,7 +145,7 @@ func (r *RPCServer) OnlinePushMsg(_ context.Context, in *pbRelay.OnlinePushMsgRe
 	}, nil
 }
 
-// GetUserOnlineStatus only the app manager can use this method. [axis]
+// GetUsersOnlineStatus only the app manager can use this method. [axis]
 func (r *RPCServer) GetUsersOnlineStatus(_ context.Context, req *pbRelay.GetUsersOnlineStatusReq) (*pbRelay.GetUsersOnlineStatusResp, error) {
 	log.NewInfo(req.OperationID, "rpc GetUsersOnlineStatus arrived server", req.String())
 	if !token_verify.IsManagerUserID(req.OpUserID) {

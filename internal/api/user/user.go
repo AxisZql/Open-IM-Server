@@ -10,7 +10,7 @@ import (
 	"Open_IM/pkg/grpc-etcdv3/getcdv3"
 	cacheRpc "Open_IM/pkg/proto/cache"
 	pbRelay "Open_IM/pkg/proto/relay"
-	open_im_sdk "Open_IM/pkg/proto/sdk_ws"
+	openimsdk "Open_IM/pkg/proto/sdk_ws"
 	rpc "Open_IM/pkg/proto/user"
 	"Open_IM/pkg/utils"
 	"context"
@@ -53,10 +53,10 @@ func GetUsersInfoFromCache(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": 500, "errMsg": "call  rpc server failed"})
 		return
 	}
-	var publicUserInfoList []*open_im_sdk.PublicUserInfo
+	var publicUserInfoList []*openimsdk.PublicUserInfo
 	for _, v := range RpcResp.UserInfoList {
 		publicUserInfoList = append(publicUserInfoList,
-			&open_im_sdk.PublicUserInfo{UserID: v.UserID, Nickname: v.Nickname, FaceURL: v.FaceURL, Gender: v.Gender, Ex: v.Ex})
+			&openimsdk.PublicUserInfo{UserID: v.UserID, Nickname: v.Nickname, FaceURL: v.FaceURL, Gender: v.Gender, Ex: v.Ex})
 	}
 	resp := api.GetUsersInfoResp{CommResp: api.CommResp{ErrCode: RpcResp.CommonResp.ErrCode, ErrMsg: RpcResp.CommonResp.ErrMsg}, UserInfoList: publicUserInfoList}
 	resp.Data = jsonData.JsonDataList(resp.UserInfoList)
@@ -148,6 +148,7 @@ func GetBlackIDListFromCache(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetUsersPublicInfo
 // @Summary 获取用户信息
 // @Description 根据用户列表批量获取用户信息
 // @Tags 用户相关
@@ -196,10 +197,10 @@ func GetUsersPublicInfo(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": 500, "errMsg": "call  rpc server failed"})
 		return
 	}
-	var publicUserInfoList []*open_im_sdk.PublicUserInfo
+	var publicUserInfoList []*openimsdk.PublicUserInfo
 	for _, v := range RpcResp.UserInfoList {
 		publicUserInfoList = append(publicUserInfoList,
-			&open_im_sdk.PublicUserInfo{UserID: v.UserID, Nickname: v.Nickname, FaceURL: v.FaceURL, Gender: v.Gender, Ex: v.Ex})
+			&openimsdk.PublicUserInfo{UserID: v.UserID, Nickname: v.Nickname, FaceURL: v.FaceURL, Gender: v.Gender, Ex: v.Ex})
 	}
 
 	resp := api.GetUsersInfoResp{CommResp: api.CommResp{ErrCode: RpcResp.CommonResp.ErrCode, ErrMsg: RpcResp.CommonResp.ErrMsg}, UserInfoList: publicUserInfoList}
@@ -208,6 +209,7 @@ func GetUsersPublicInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// UpdateUserInfo
 // @Summary 修改用户信息
 // @Description 修改用户信息 userID faceURL等
 // @Tags 用户相关
@@ -227,7 +229,7 @@ func UpdateUserInfo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errCode": 400, "errMsg": err.Error()})
 		return
 	}
-	req := &rpc.UpdateUserInfoReq{UserInfo: &open_im_sdk.UserInfo{}}
+	req := &rpc.UpdateUserInfoReq{UserInfo: &openimsdk.UserInfo{}}
 	utils.CopyStructFields(req.UserInfo, &params)
 	req.OperationID = params.OperationID
 	var ok bool
@@ -259,6 +261,7 @@ func UpdateUserInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// SetGlobalRecvMessageOpt
 // @Summary 设置全局免打扰
 // @Description 设置全局免打扰
 // @Tags 用户相关
@@ -310,6 +313,7 @@ func SetGlobalRecvMessageOpt(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetSelfUserInfo
 // @Summary 获取自己的信息
 // @Description 传入ID获取自己的信息
 // @Tags 用户相关
@@ -373,6 +377,7 @@ func GetSelfUserInfo(c *gin.Context) {
 	}
 }
 
+// GetUsersOnlineStatus
 // @Summary 获取用户在线状态
 // @Description 获取用户在线状态
 // @Tags 用户相关
@@ -410,6 +415,7 @@ func GetUsersOnlineStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errCode": 500, "errMsg": "Manager == 0"})
 		return
 	}
+	// there is a problem, the relay layer rpc server just allow app manager get other users online status, so next line code is need,ha ha ha.[axis]
 	req.OpUserID = config.Config.Manager.AppManagerUid[0]
 
 	log.NewInfo(params.OperationID, "GetUsersOnlineStatus args ", req.String())
@@ -483,7 +489,7 @@ func GetUsers(c *gin.Context) {
 	reqPb.UserID = req.UserID
 	reqPb.UserName = req.UserName
 	reqPb.Content = req.Content
-	reqPb.Pagination = &open_im_sdk.RequestPagination{ShowNumber: req.ShowNumber, PageNumber: req.PageNumber}
+	reqPb.Pagination = &openimsdk.RequestPagination{ShowNumber: req.ShowNumber, PageNumber: req.PageNumber}
 	etcdConn := getcdv3.GetDefaultConn(config.Config.Etcd.EtcdSchema, strings.Join(config.Config.Etcd.EtcdAddr, ","), config.Config.RpcRegisterName.OpenImUserName, reqPb.OperationID)
 	if etcdConn == nil {
 		errMsg := reqPb.OperationID + "getcdv3.GetDefaultConn == nil"

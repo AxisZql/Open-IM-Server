@@ -52,6 +52,7 @@ func (rpc *RpcChat) PullMessageBySeqList(_ context.Context, in *open_im_sdk.Pull
 	log.NewInfo(in.OperationID, "rpc PullMessageBySeqList is arriving", in.String())
 	resp := new(open_im_sdk.PullMessageBySeqListResp)
 	m := make(map[string]*open_im_sdk.MsgDataList)
+	// read msg from redis.[axis]
 	redisMsgList, failedSeqList, err := commonDB.DB.GetMessageListBySeq(in.UserID, in.SeqList, in.OperationID)
 	if err != nil {
 		if err != go_redis.Nil {
